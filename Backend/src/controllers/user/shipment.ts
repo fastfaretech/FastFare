@@ -92,9 +92,10 @@ export async function GetShipments(req: Request, res: Response) {
             console.log("Shipment not found!");
             return res.status(404).json({ message: "Shipment not found!" });
         }
+        
         return res.status(200).json({
             message: "Shipment fetched!",
-            shipment: shipment
+            shipment: shipment 
         });
         
     }catch(error){
