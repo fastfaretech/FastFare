@@ -1,3 +1,4 @@
+import { create } from "domain"
 import mongoose from "mongoose"
 
 const userDetailsSchema = new mongoose.Schema({
@@ -54,19 +55,6 @@ const logisticDetailsSchema = new mongoose.Schema({
     address: {
         type: String
     },
-
-    drivers: [{
-        name: {
-            type: String
-        },
-        licenseNumber: {
-            type: String,
-            unique: true
-        },
-        contactNumber: {
-            type: Number
-        }
-    }],
     createdAt: {
         type: Date,
         default: Date.now
@@ -99,8 +87,57 @@ const adminDetailsSchema = new mongoose.Schema({
 
 const AdminDetails = mongoose.model("ADMIN_DETAILS", adminDetailsSchema)
 
+const driverDetailsSchema = new mongoose.Schema({
+    logisticClientId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "LOGISTIC_DETAILS",
+        required: true,
+        unique: true
+    },
+    name: {
+        type: String,
+        required: true
+    },
+    email: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    contactNumber: {
+        type: Number,
+        required: true,
+        unique: true
+    },
+    licenseNumber: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    vehicleNumber: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    chasisNo: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    status: {
+        type: String,
+        enum: ["available", "unavailable", "on-duty"],
+        default: "available"
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now
+    }
+})
+
+const DriverDetails = mongoose.model("DRIVER_DETAILS", driverDetailsSchema)
 export {
     UserDetails,
     LogisticDetails,
-    AdminDetails
+    AdminDetails,
+    DriverDetails
 }

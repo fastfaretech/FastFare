@@ -6,11 +6,20 @@ const shipmentSchema = new mongoose.Schema({
         ref: "USER",
         required: true
     },
+    logisticClientId:{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "LOGISTIC_DETAILS",
+    },
+    DriverId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "DRIVER_DETAILS",
+    },
+
+    
     shipmentId:{
         type: String,
         required: true,
-        unique: true,
-        
+        unique: true,  
     },
     pickupLocation:{
         longitude:{
@@ -60,7 +69,7 @@ const shipmentSchema = new mongoose.Schema({
     },
     status:{
         type: String,
-        enum: ["pending", "booked", "in-transit", "delivered", "cancelled"],
+        enum: ["rejected", "pending", "in-transit", "delivered", "cancelled"],
         default: "pending"
     },
     price:{
@@ -73,5 +82,5 @@ const shipmentSchema = new mongoose.Schema({
     }
 })
 
-const Shipment = mongoose.model("SHIPMENT", shipmentSchema)
+const Shipment = mongoose.model("SHIPMENTS", shipmentSchema)
 export { Shipment }
