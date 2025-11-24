@@ -66,6 +66,7 @@ Backend/
         authRoute.ts
       user/
         authRoute.ts
+        shipmentRoute.ts
       connector.ts
     services/
       gstinService.ts
@@ -92,7 +93,7 @@ import bcrypt from "bcrypt"
 
 import { config } from "../../utils/envConfig"
 import User from "../../models/userModel"
-import { UserDetails,  } from "../../models/detailsModel"
+import { AdminDetails } from "../../models/detailsModel"
 
 
 const JWT_SECRET = config.JWT_SECRET;
@@ -164,14 +165,14 @@ export async function UpdateUser(req:Request, res:Response){
                 message:"User Not Found!"
             })
         }   
-        if(userExists.role !== "user"){
-            console.log("This endpoint is only for users with role 'user'.")
+        if(userExists.role !== "admin"){
+            console.log("This endpoint is only for users with role 'admin'.")
             return res.status(403).json({
-                message:"This endpoint is only for users wiOnly users with role 'user' can update user details.th role 'user'."
+                message:"This endpoint is only for users with role 'admin'."
             })
         }
 
-        const user = await UserDetails.findOneAndUpdate(
+        const user = await AdminDetails.findOneAndUpdate(
             { userId: userId },
             {$set: data},
             {new:true, runValidators:true, upsert:true}
@@ -245,7 +246,7 @@ import bcrypt from "bcrypt"
 
 import { config } from "../../utils/envConfig"
 import User from "../../models/userModel"
-import { UserDetails,  } from "../../models/detailsModel"
+import { LogisticDetails,  } from "../../models/detailsModel"
 
 const JWT_SECRET = config.JWT_SECRET;
 
@@ -299,21 +300,17 @@ export async function Login(req:Request, res:Response){
 
 
 interface Iupdate {
-    name?:string,
-    contactNumber?:string,
-    age?:number,
-    companyDetails?:{
-        companyName?:string,
-        address?:string,
-        gstin?:string
-    }
+    name?: string;
+    companyName?: string;
+    gstin?: string;
+    address?: string;
 }
 
 export async function UpdateUser(req:Request, res:Response){
     try{
         const userId = req.params.id
         const data: Iupdate = req.body
-
+        
         const userExists = await User.findById(userId)
         if(!userExists){
             console.log("User Not Found!") 
@@ -321,20 +318,20 @@ export async function UpdateUser(req:Request, res:Response){
                 message:"User Not Found!"
             })
         }   
-        if(userExists.role !== "user"){
-            console.log("This endpoint is only for users with role 'user'.")
+        if(userExists.role !== "logistic"){
+            console.log("This endpoint is only for users with role 'logistic'.")
             return res.status(403).json({
-                message:"This endpoint is only for users wiOnly users with role 'user' can update user details.th role 'user'."
+                message:"This endpoint is only for users with role 'logistic'."
             })
         }
 
-        const user = await UserDetails.findOneAndUpdate(
+        const user = await LogisticDetails.findOneAndUpdate(
             { userId: userId },
             {$set: data},
             {new:true, runValidators:true, upsert:true}
         )
 
-        console.log("User Details Updated Successfully!")
+        console.log("User Details Updated Successfully!",user)
         return res.status(200).json({
             message:"User Details Updated Successfully!",
             user:user
@@ -396,85 +393,16 @@ export async function LogisticRegister(req: Request, res: Response){
 }
 </file>
 
-<file path="Backend/src/controllers/user/shipment.ts">
-import { Request, Response } from "express";
-import { nanoid } from "nanoid";
-import { Shipment } from "../../models/shipmentModel";
-
-export async function BookShipments(req: Request, res: Response) {
-    try{
-        const user = req.user;
-        const {
-            pickupLocation: {
-                longitude: pickupLongitude,
-                latitude: pickupLatitude
-            },
-            deliveryLocation: {
-                longitude: deliveryLongitude,
-                latitude: deliveryLatitude
-            },
-            size: {
-                length,
-                width,
-                height
-            },
-            quantity,
-            weight,
-            netWeight,
-            price
-        } = req.body;
-
-        if (!pickupLongitude ||
-            !pickupLatitude || 
-            !deliveryLongitude || 
-            !deliveryLatitude || 
-            !length || 
-            !width || 
-            !height || 
-            !quantity || 
-            !weight || 
-            !netWeight || 
-            !price) {
-            console.log("All fields are required!");
-            return res.status(400).json({ message: "All fields are required!" });
-        }
-
-        const shipmentId = `FFR+${nanoid(5)}`;
-        const newShipment = new Shipment({
-            shipmentId,
-            user: user?._id,
-            pickupLocation: {
-                longitude: pickupLongitude,
-                latitude: pickupLatitude
-            },
-            deliveryLocation: {
-                longitude: deliveryLongitude,
-                latitude: deliveryLatitude
-            },
-            size: {
-                length,
-                width,
-                height
-            },
-            quantity,
-            weight,
-            netWeight,
-            price,
-            status: "Booked"
-        })
-        await newShipment.save();
-        console.log("Shipment booked successfully!");
-        return res.status(201).json({
-            message: "Shipment booked successfully!",
-            shipment: newShipment
-        });
-    }catch(error){
-        console.log("Error:Internal Server Error!", error)
-        return res.status(500).json({
-            message:"Internal Server Error!",
-            error
-        })
-    }
+<file path="Backend/src/db/dbConnect.ts">
+import mongoose from 'mongoose'
+import { config } from "../utils/envConfig"
+ 
+export async function dbConnect(){
+    mongoose.connect(config.MONGO_URI || '').then(() =>{
+        console.log("Connected to MongoDB")
+    }).catch((err) => {
+        console.error("Error connecting to MongoDB:", err)
+    })
 }
 </file>
 
@@ -493,7 +421,7 @@ export async function Authenticate(req:Request, res:Response, next:NextFunction)
         console.log("Error:Authorization header missing!")
         return res.status(401).json({message:"Authorization header missing!"})
     }
-
+    
     const token = header.split(" ")[1]
     if(!token){
         console.log("Error:Token missing!")
@@ -501,8 +429,8 @@ export async function Authenticate(req:Request, res:Response, next:NextFunction)
     }
 
     try{
-        const decoded = verify(token, JWT_SECRET!) as {userId:string, role:string}
-        const user = await User.findById(decoded.userId).select("-pwdhash")
+        const decoded = verify(token, JWT_SECRET!) as {id:string, role:string}
+        const user = await User.findById(decoded.id).select("-pwdhash")
         req.user = user
         next()
     }catch(error){
@@ -526,7 +454,6 @@ export function Authorize(Role:string[]){
             if (!dbuser) {
                 return res.status(401).json({ message: "User not found" })
             }
-
             if(!Role.includes(dbuser?.role)){
                 console.log("Error:Unauthorized Access!")
                 return res.status(403).json({message:"Unauthorized Access!"})
@@ -713,7 +640,7 @@ const shipmentSchema = new mongoose.Schema({
     },
     status:{
         type: String,
-        enum: ["pending", "in-transit", "delivered", "cancelled"],
+        enum: ["pending", "booked", "in-transit", "delivered", "cancelled"],
         default: "pending"
     },
     price:{
@@ -735,11 +662,13 @@ import { Router } from "express"
 
 import { Authenticate } from "../../middlewares/authenticationMiddleware"
 import { Authorize } from "../../middlewares/authorizationMiddleware"
-import { AdminRegister } from "../../controllers/admin/authController"
+import { AdminRegister, Login, UpdateUser } from "../../controllers/admin/authController"
 
 const router = Router()
 
-router.post('/register', Authenticate, Authorize(["admin"]), AdminRegister)
+router.post('/register', AdminRegister)
+router.post('/login', Login)
+router.patch('/update/:id', Authenticate, Authorize(["admin"]), UpdateUser)
 
 export default router
 </file>
@@ -749,267 +678,30 @@ import { Router } from "express"
 
 import { Authenticate } from "../../middlewares/authenticationMiddleware"
 import { Authorize } from "../../middlewares/authorizationMiddleware"
-import { LogisticRegister } from "../../controllers/logistics/authController"
+import { LogisticRegister, Login, UpdateUser } from "../../controllers/logistics/authController"
 
 const router = Router()
 
-router.post('/register', Authenticate, Authorize(["admin","logistic"]), LogisticRegister)
+router.post('/register', LogisticRegister)
+router.post('/login', Login)
+router.patch('/update/:id', Authenticate, Authorize(["logistic"]), UpdateUser)
 
 export default router
 </file>
 
-<file path="Backend/types.d.ts">
-import { Request } from "express";
-import { AdminModel } from "./src/models/adminModel";
-import { UserModel } from "./src/models/userModel";
-
-declare global {
-  namespace Express {
-    interface Request {
-      user?: UserModel;
-      admin?: AdminModel;
-    }
-  }
-}
-</file>
-
-<file path="Backend/src/controllers/user/authController.ts">
-import { Request, Response } from "express"
-import {sign, verify} from "jsonwebtoken"
-import bcrypt from "bcrypt"
-
-import { config } from "../../utils/envConfig"
-import User from "../../models/userModel"
-import { UserDetails,  } from "../../models/detailsModel"
-import { verifyGstin } from "../../services/gstinService"
-
-const JWT_SECRET = config.JWT_SECRET;
-
-interface Iregister {
-    name:string,
-    email:string,
-    password:string
-}
-export async function UserRegister(req:Request,res:Response){
-    try{
-        const {name, email, password}: Iregister = req.body
-        if(!name || !email || !password){
-            console.log("All fields are Required!")
-            return res.status(400).json({ message: "All fields are required!" });
-        }
-
-        const user = await User.findOne({email:email})
-        if(user){
-            console.log("Error:User already exists!")
-            return res.status(409).json({message:"User already exists with this email!"})
-        }
-
-        const saltRound = 10
-        const pwdhash = await bcrypt.hash(password, saltRound)
-        const newUser = new User({
-            name,
-            email,
-            pwdhash
-        })
-        await newUser.save()
-        const response = {
-            _id: newUser._id,
-            name: newUser.name,
-            email: newUser.email,
-            role: newUser.role,
-            createdAt: newUser.createdAt
-        }
-        console.log("User Registered Successfully!")
-        return res.status(201).json({
-            message:"User Registered Successfully!",
-            response
-        })
-   
-    }catch(error){
-        console.log("Error:Internal Server Error!", error)
-        return res.status(500).json({
-            message:"Internal Server Error!",
-            error
-        })
-    }
-}
-
-interface Ilogin {
-    email:string,
-    password:string
-}
-export async function Login(req:Request, res:Response){
-    try{
-        const {email, password}: Ilogin = req.body
-        if(!email || !password){
-            console.log("All fields are Required!")
-            return res.status(400).json({message:"All fields are Required!"})
-        }
-
-        const user = await User.findOne({email:email})
-        if(!user){
-            console.log("Error:User does not exist!")
-            return res.status(401).json({message:"Invalid Email or Password!"})
-        }
-        
-        const passwordMatch = await bcrypt.compare(password, user.pwdhash)
-        if(!passwordMatch){
-            console.log("Invalid Credentials!")
-            return res.status(401).json({message:"Invalid Email or Password!"})
-        }
-
-        const token = sign({email:user.email, role:user.role, id:user._id},JWT_SECRET,{expiresIn: "1h"})
-        if(verify(token, JWT_SECRET))
-            console.log("Token Verified Successfully")
-
-        console.log("User Logged In Successfully!")
-        return res.status(200).json({
-            message:"User Logged In Successfully!",
-             token 
-        });
-    }catch(error){
-        console.log("Error:Internal Server Error!", error)
-        return res.status(500).json({
-            message:"Internal Server Error!",
-            error
-        })
-    }
-}
-
-
-interface Iupdate {
-    name?:string,
-    contactNumber?:string,
-    age?:number,
-    companyDetails?:{
-        companyName?:string,
-        address?:string,
-        gstin?:string
-    }
-}
-
-export async function UpdateUser(req:Request, res:Response){
-    try{
-        const userId = req.params.id
-        const data: Iupdate = req.body
-        if(data.companyDetails && data.companyDetails.gstin){
-            const gstinVerificationResult = await verifyGstin(data.companyDetails.gstin)
-            if(gstinVerificationResult.flag !== "true"){
-                console.log("Invalid GSTIN provided.")
-                return res.status(400).json({ message: "Invalid GSTIN provided." });
-            }
-        }
-
-        const userExists = await User.findById(userId)
-        if(!userExists){
-            console.log("User Not Found!") 
-            return res.status(404).json({
-                message:"User Not Found!"
-            })
-        }   
-        if(userExists.role !== "user"){
-            console.log("This endpoint is only for users with role 'user'.")
-            return res.status(403).json({
-                message:"This endpoint is only for users wiOnly users with role 'user' can update user details.th role 'user'."
-            })
-        }
-
-        const user = await UserDetails.findOneAndUpdate(
-            { userId: userId },
-            {$set: data},
-            {new:true, runValidators:true, upsert:true}
-        )
-
-        console.log("User Details Updated Successfully!")
-        return res.status(200).json({
-            message:"User Details Updated Successfully!",
-            user:user
-        })
-
-    }catch(error){
-        console.log(error)
-        return res.status(500).json({
-            message:"Internal Server Error!",
-            error
-        })
-    }
-}
-</file>
-
-<file path="Backend/src/db/dbConnect.ts">
-import mongoose from 'mongoose'
-import { config } from "../utils/envConfig"
- 
-export async function dbConnect(){
-    mongoose.connect(config.MONGO_URI || '').then(() =>{
-        console.log("Connected to MongoDB")
-    }).catch((err) => {
-        console.error("Error connecting to MongoDB:", err)
-    })
-}
-</file>
-
-<file path="Backend/src/models/userModel.ts">
-import { timeStamp } from "console"
-import mongoose from "mongoose"
-
-const userSchema = new mongoose.Schema({
-    name: {
-        type: String,
-        required: true
-    },
-    email: {
-        type: String,
-        required: true,
-        lowercase: true,
-        unique: true
-    },
-    pwdhash:{
-        type:String,
-        required:true
-    },
-    role:{
-        type:String,
-        required:true,
-        enum:["user","admin","logistic"],
-        default:"user"
-    },
-    createdAt:{
-        type:Date,
-        default: Date.now
-    }
-})
-
-const User = mongoose.model("USER",userSchema)
-export default User
-</file>
-
-<file path="Backend/src/routes/user/authRoute.ts">
+<file path="Backend/src/routes/user/shipmentRoute.ts">
 import { Router } from "express"
 
 import { Authenticate } from "../../middlewares/authenticationMiddleware"
 import { Authorize } from "../../middlewares/authorizationMiddleware"
-import { UserRegister, Login, UpdateUser } from "../../controllers/user/authController"
+import { BookShipments, GetShipments } from "../../controllers/user/shipment"
 
 const router = Router()
 
-router.post('/register', UserRegister)
-router.post('/login', Login)
-router.patch('/update/:id', Authenticate, Authorize(["user"]), UpdateUser)
+router.post('/order/book', Authenticate, Authorize(["user"]), BookShipments)
+router.get('/order/get/:shipmentId', Authenticate, Authorize(["user"]), GetShipments)
+
 export default router
-</file>
-
-<file path="Backend/src/routes/connector.ts">
-import { Router } from "express"
-
-import userRoutes from "./user/authRoute"
-import adminRoutes from "./admin/authRoute"
-const  router = Router()
-
-router.use('/user', userRoutes)
-router.use('/admin', adminRoutes)
-
-export default router;
 </file>
 
 <file path="Backend/src/services/gstinService.ts">
@@ -1745,6 +1437,21 @@ app.listen(PORT, ()=>{
 }
 </file>
 
+<file path="Backend/types.d.ts">
+import { Request } from "express";
+import { AdminModel } from "./src/models/adminModel";
+import { UserModel } from "./src/models/userModel";
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: UserModel;
+      admin?: AdminModel;
+    }
+  }
+}
+</file>
+
 <file path=".gitignore">
 # Logs
 logs
@@ -1925,6 +1632,347 @@ SOFTWARE.
 <file path="README.md">
 # FastFare
 This repository consists of frontend, backend and readme file for FastFare Website
+</file>
+
+<file path="Backend/src/controllers/user/authController.ts">
+import { Request, Response } from "express"
+import {sign, verify} from "jsonwebtoken"
+import bcrypt from "bcrypt"
+
+import { config } from "../../utils/envConfig"
+import User from "../../models/userModel"
+import { UserDetails,  } from "../../models/detailsModel"
+import { verifyGstin } from "../../services/gstinService"
+
+const JWT_SECRET = config.JWT_SECRET;
+
+interface Iregister {
+    name:string,
+    email:string,
+    password:string
+}
+export async function UserRegister(req:Request,res:Response){
+    try{
+        const {name, email, password}: Iregister = req.body
+        if(!name || !email || !password){
+            console.log("All fields are Required!")
+            return res.status(400).json({ message: "All fields are required!" });
+        }
+
+        const user = await User.findOne({email:email})
+        if(user){
+            console.log("Error:User already exists!")
+            return res.status(409).json({message:"User already exists with this email!"})
+        }
+
+        const saltRound = 10
+        const pwdhash = await bcrypt.hash(password, saltRound)
+        const newUser = new User({
+            name,
+            email,
+            pwdhash
+        })
+        await newUser.save()
+        const response = {
+            _id: newUser._id,
+            name: newUser.name,
+            email: newUser.email,
+            role: newUser.role,
+            createdAt: newUser.createdAt
+        }
+        console.log("User Registered Successfully!")
+        return res.status(201).json({
+            message:"User Registered Successfully!",
+            response
+        })
+   
+    }catch(error){
+        console.log("Error:Internal Server Error!", error)
+        return res.status(500).json({
+            message:"Internal Server Error!",
+            error
+        })
+    }
+}
+
+interface Ilogin {
+    email:string,
+    password:string
+}
+export async function Login(req:Request, res:Response){
+    try{
+        const {email, password}: Ilogin = req.body
+        if(!email || !password){
+            console.log("All fields are Required!")
+            return res.status(400).json({message:"All fields are Required!"})
+        }
+
+        const user = await User.findOne({email:email})
+        if(!user){
+            console.log("Error:User does not exist!")
+            return res.status(401).json({message:"Invalid Email or Password!"})
+        }
+        
+        const passwordMatch = await bcrypt.compare(password, user.pwdhash)
+        if(!passwordMatch){
+            console.log("Invalid Credentials!")
+            return res.status(401).json({message:"Invalid Email or Password!"})
+        }
+
+        const token = sign({email:user.email, role:user.role, id:user._id},JWT_SECRET,{expiresIn: "1h"})
+        if(verify(token, JWT_SECRET))
+            console.log("Token Verified Successfully")
+
+        console.log("User Logged In Successfully!")
+        return res.status(200).json({
+            message:"User Logged In Successfully!",
+             token 
+        });
+    }catch(error){
+        console.log("Error:Internal Server Error!", error)
+        return res.status(500).json({
+            message:"Internal Server Error!",
+            error
+        })
+    }
+}
+
+
+interface Iupdate {
+    name?:string,
+    contactNumber?:string,
+    age?:number,
+    companyDetails?:{
+        companyName?:string,
+        address?:string,
+        gstin?:string
+    }
+}
+
+export async function UpdateUser(req:Request, res:Response){
+    try{
+        const userId = req.params.id
+        const data: Iupdate = req.body
+        if(data.companyDetails && data.companyDetails.gstin){
+            const gstinVerificationResult = await verifyGstin(data.companyDetails.gstin)
+            if(gstinVerificationResult.flag !== "true"){
+                console.log("Invalid GSTIN provided.")
+                return res.status(400).json({ message: "Invalid GSTIN provided." });
+            }
+        }
+
+        const userExists = await User.findById(userId)
+        if(!userExists){
+            console.log("User Not Found!") 
+            return res.status(404).json({
+                message:"User Not Found!"
+            })
+        }   
+        if(userExists.role !== "user"){
+            console.log("This endpoint is only for users with role 'user'.")
+            return res.status(403).json({
+                message:"This endpoint is only for users wiOnly users with role 'user' can update user details.th role 'user'."
+            })
+        }
+
+        const user = await UserDetails.findOneAndUpdate(
+            { userId: userId },
+            {$set: data},
+            {new:true, runValidators:true, upsert:true}
+        )
+
+        console.log("User Details Updated Successfully!")
+        return res.status(200).json({
+            message:"User Details Updated Successfully!",
+            user:user
+        })
+
+    }catch(error){
+        console.log(error)
+        return res.status(500).json({
+            message:"Internal Server Error!",
+            error
+        })
+    }
+}
+</file>
+
+<file path="Backend/src/controllers/user/shipment.ts">
+import { Request, Response } from "express";
+import { nanoid } from "nanoid";
+import { Shipment } from "../../models/shipmentModel";
+
+export async function BookShipments(req: Request, res: Response) {
+    try{
+        const user = req.user;
+        const {
+            pickupLocation: {
+                longitude: pickupLongitude,
+                latitude: pickupLatitude
+            },
+            deliveryLocation: {
+                longitude: deliveryLongitude,
+                latitude: deliveryLatitude
+            },
+            size: {
+                length,
+                width,
+                height
+            },
+            quantity,
+            weight,
+            netWeight,
+            price
+        } = req.body;
+
+        if (!pickupLongitude ||
+            !pickupLatitude || 
+            !deliveryLongitude || 
+            !deliveryLatitude || 
+            !length || 
+            !width || 
+            !height || 
+            !quantity || 
+            !weight || 
+            !netWeight || 
+            !price) {
+            console.log("All fields are required!");
+            return res.status(400).json({ message: "All fields are required!" });
+        }
+
+        const shipmentId = `FFR+${nanoid(5)}`;
+        const newShipment = new Shipment({
+            shipmentId,
+            userId: user?._id,
+            pickupLocation: {
+                longitude: pickupLongitude,
+                latitude: pickupLatitude
+            },
+            deliveryLocation: {
+                longitude: deliveryLongitude,
+                latitude: deliveryLatitude
+            },
+            size: {
+                length,
+                width,
+                height
+            },
+            quantity,
+            weight,
+            netWeight,
+            price,
+            status: "booked"
+        })
+        await newShipment.save();
+        console.log("Shipment booked successfully!");
+        return res.status(201).json({
+            message: "Shipment booked successfully!",
+            shipment: newShipment
+        });
+    }catch(error){
+        console.log("Error:Internal Server Error!", error)
+        return res.status(500).json({
+            message:"Internal Server Error!",
+            error
+        })
+    }
+}
+
+
+export async function GetShipments(req: Request, res: Response) {
+    try{
+        const user = req.user;
+        const {shipmentId} = req.params;
+        if (!shipmentId) {
+            console.log("Shipment ID is required!");
+            return res.status(400).json({ message: "Shipment ID is required!" });
+        }
+        const shipment = await Shipment.findOne({shipmentId, userId: user?._id});
+        if(!shipment){
+            console.log("Shipment not found!");
+            return res.status(404).json({ message: "Shipment not found!" });
+        }
+        
+        return res.status(200).json({
+            message: "Shipment fetched!",
+            shipment: shipment 
+        });
+        
+    }catch(error){
+        console.log("Error:Internal Server Error!", error)
+        return res.status(500).json({
+            message:"Internal Server Error!",
+            error
+        })
+    }
+}
+</file>
+
+<file path="Backend/src/models/userModel.ts">
+import { timeStamp } from "console"
+import mongoose from "mongoose"
+
+const userSchema = new mongoose.Schema({
+    name: {
+        type: String,
+        required: true
+    },
+    email: {
+        type: String,
+        required: true,
+        lowercase: true,
+        unique: true
+    },
+    pwdhash:{
+        type:String,
+        required:true
+    },
+    role:{
+        type:String,
+        required:true,
+        enum:["user","admin","logistic"],
+        default:"user"
+    },
+    createdAt:{
+        type:Date,
+        default: Date.now
+    }
+})
+
+const User = mongoose.model("USER",userSchema)
+export default User
+</file>
+
+<file path="Backend/src/routes/user/authRoute.ts">
+import { Router } from "express"
+
+import { Authenticate } from "../../middlewares/authenticationMiddleware"
+import { Authorize } from "../../middlewares/authorizationMiddleware"
+import { UserRegister, Login, UpdateUser } from "../../controllers/user/authController"
+
+const router = Router()
+
+router.post('/register', UserRegister)
+router.post('/login', Login)
+router.patch('/update/:id', Authenticate, Authorize(["user"]), UpdateUser)
+export default router
+</file>
+
+<file path="Backend/src/routes/connector.ts">
+import { Router } from "express"
+
+import userRoutes from "./user/authRoute"
+import adminRoutes from "./admin/authRoute"
+import logisticRoutes from "./logistics/authRoute"
+import shipment from "./user/shipmentRoute"
+const  router = Router()
+
+router.use('/user', userRoutes)
+router.use('/admin', adminRoutes)
+router.use('/logistic', logisticRoutes)
+router.use('/user', shipment)
+
+export default router;
 </file>
 
 <file path="Backend/package.json">
