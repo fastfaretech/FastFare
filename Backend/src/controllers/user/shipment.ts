@@ -61,7 +61,7 @@ export async function BookShipments(req: Request, res: Response) {
             weight,
             netWeight,
             price,
-            status: "booked"
+            status: "pending"
         })
         await newShipment.save();
         console.log("Shipment booked successfully!");
