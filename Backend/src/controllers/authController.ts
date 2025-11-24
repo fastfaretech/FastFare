@@ -47,13 +47,16 @@ export async function Login(req:Request, res:Response){
     }
 }
 
-export async function fetchUserDetails(req: Request, res: Response){
+export async function fetchUserDetail(req: Request, res: Response){
     try{
-        const { data } = req.body;
-        const User = data.user;
-        const Role = data.role;
+        if (!req.user) {
+            return res.status(401).json({ message: "Unauthorized!" });
+        }
+        const data = req.user as any;
 
-        const user = await User.findById(User.id).select("-pwdhash -__v")
+        const Role = data.role;
+        console.log("Fetching details for user:", data.id, "with role:", Role);
+        const user = await User.findById(data.id).select("-pwdhash -__v")
         if(!user){
             console.log("User Not Found!") 
             return res.status(404).json({
@@ -61,13 +64,18 @@ export async function fetchUserDetails(req: Request, res: Response){
             })
         }
         
-        var details: any = {};
+        var details: any = null;
         if(Role == "admin"){
-            details = await AdminDetails.findOne({userId: User.id}).select("-__v -userId");
+            details = await AdminDetails.findOne({userId: user._id}).select("-__v -userId");
         }else if(Role == "logistic"){
-            details = await LogisticDetails.findOne({userId: User.id}).select("-__v -userId");
+            details = await LogisticDetails.findOne({userId: user._id}).select("-__v -userId");
         }else if (Role == "user"){
-            details = await UserDetails.findOne({userId: User.id}).select("-__v -userId");
+            details = await UserDetails.findOne({userId: user._id}).select("-__v -userId");
+        }else{
+            console.log("Invalid User Role!")
+            return res.status(400).json({
+                message:"Invalid User Role!"
+            })
         }
 
         console.log("User Details Fetched Successfully!")
@@ -79,8 +87,7 @@ export async function fetchUserDetails(req: Request, res: Response){
     }catch(error){
         console.log("Error:Internal Server Error!", error)
         return res.status(500).json({
-            message:"Internal Server Error!",
-            error
+            message:"Internal Server Error!"
         })
     }
 }
