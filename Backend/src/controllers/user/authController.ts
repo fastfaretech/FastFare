@@ -1,13 +1,9 @@
 import { Request, Response } from "express"
-import {sign, verify} from "jsonwebtoken"
 import bcrypt from "bcrypt"
 
-import { config } from "../../utils/envConfig"
 import User from "../../models/userModel"
 import { UserDetails,  } from "../../models/detailsModel"
 import { verifyGstin } from "../../services/gstinService"
-
-const JWT_SECRET = config.JWT_SECRET;
 
 interface Iregister {
     name:string,
@@ -58,47 +54,6 @@ export async function UserRegister(req:Request,res:Response){
     }
 }
 
-interface Ilogin {
-    email:string,
-    password:string
-}
-export async function Login(req:Request, res:Response){
-    try{
-        const {email, password}: Ilogin = req.body
-        if(!email || !password){
-            console.log("All fields are Required!")
-            return res.status(400).json({message:"All fields are Required!"})
-        }
-
-        const user = await User.findOne({email:email})
-        if(!user){
-            console.log("Error:User does not exist!")
-            return res.status(401).json({message:"Invalid Email or Password!"})
-        }
-        
-        const passwordMatch = await bcrypt.compare(password, user.pwdhash)
-        if(!passwordMatch){
-            console.log("Invalid Credentials!")
-            return res.status(401).json({message:"Invalid Email or Password!"})
-        }
-
-        const token = sign({email:user.email, role:user.role, id:user._id},JWT_SECRET,{expiresIn: "1h"})
-        if(verify(token, JWT_SECRET))
-            console.log("Token Verified Successfully")
-
-        console.log("User Logged In Successfully!")
-        return res.status(200).json({
-            message:"User Logged In Successfully!",
-             token 
-        });
-    }catch(error){
-        console.log("Error:Internal Server Error!", error)
-        return res.status(500).json({
-            message:"Internal Server Error!",
-            error
-        })
-    }
-}
 
 
 interface Iupdate {
