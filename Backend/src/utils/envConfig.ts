@@ -14,4 +14,6 @@ export const config = {
   MONGO_URI: process.env.MONGO_URI,
   JWT_SECRET: process.env.JWT_SECRET || 'asldkjfasljkf3983433',
   GSTIN_VERIFY_API_KEY: process.env.GSTIN_VERIFY_API_KEY,
+  GMAIL_API: process.env.GMAIL_API || '',
+  EMAIL_ID: process.env.EMAIL_ID || '',
 };
