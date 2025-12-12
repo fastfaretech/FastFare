@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .btn-premium {
+    @apply inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-brand-600 to-cyan-400 text-white font-semibold shadow-lg hover:scale-105 transition;
+  }
+
+  .glass-card {
+    @apply bg-white/10 backdrop-blur-xl border border-white/20 shadow-lg rounded-3xl;
+  }
+}
