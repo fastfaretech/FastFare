@@ -150,7 +150,7 @@ export default function LoginPage() {
                   <input
                     {...register("email")}
                     placeholder="you@gmail.com"
-                    className="input-premium px-4 py-1"
+                    className="input-premium px-4 py-1 ml-5"
                     type="email"
                     required
                   />
@@ -162,7 +162,7 @@ export default function LoginPage() {
                     {...register("password")}
                     type="password"
                     placeholder="Enter your password"
-                    className="input-premium px-3 py-1"
+                    className="input-premium px-3 py-1 ml-4"
                     required
                   />
                 </motion.div>
@@ -176,7 +176,7 @@ export default function LoginPage() {
 
               <p className="text-center text-xs text-slate-500 mt-6">
                 New to FastFare?{" "}
-                <Link to="/register" className="auth-link text-blue-500">
+                <Link to="/register" className="auth-link text-blue-500 hover:text-indigo-950">
                   Create your free account
                 </Link>
               </p>
