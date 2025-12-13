@@ -11,6 +11,7 @@ import NewShipment from "./pages/NewShipment";
 import PartnersList from "./pages/PartnersList";
 import Register from "./pages/Register";
 import ShipmentsList from "./pages/ShipmentsList";
+import UserDetails from "./pages/UserDetails";
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
         <Route path="/admin/partners" element={<PartnersList />} />
         <Route path="/register" element={<Register />}></Route>
         <Route path="/admin/shipments" element={<ShipmentsList />} />
+        <Route path="/userdetails" element={<UserDetails/>}></Route>
         {/* Add your dashboard pages here */}
 
       </Routes>

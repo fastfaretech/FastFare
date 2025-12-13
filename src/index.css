@@ -4,7 +4,7 @@
 
 @layer components {
     .btn-premium {
-      @apply inline-flex items-center justify-center bg-[#0096c7] rounded-3xl text-white px-5 py-3 hover:bg-[#023e8a] transition-colors duration-300;
+      @apply inline-flex items-center justify-center bg-[#0096c7] rounded-2xl text-white px-5 py-3 hover:bg-[#023e8a] hover:scale-105 transition-all duration-300;
     }
   
     .glass-card {
