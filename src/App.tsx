@@ -12,6 +12,7 @@ import PartnersList from "./pages/PartnersList";
 import Register from "./pages/Register";
 import ShipmentsList from "./pages/ShipmentsList";
 import UserDetails from "./pages/UserDetails";
+import UsersList from "./pages/UsersList";
 
 function App() {
   return (
@@ -30,7 +31,7 @@ function App() {
         <Route path="/register" element={<Register />}></Route>
         <Route path="/admin/shipments" element={<ShipmentsList />} />
         <Route path="/userdetails" element={<UserDetails/>}></Route>
-        {/* Add your dashboard pages here */}
+        <Route path="/admin/users" element={<UsersList />} />
 
       </Routes>
     </BrowserRouter>
