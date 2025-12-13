@@ -1,3 +1,14 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+    .btn-premium {
+      @apply inline-flex items-center justify-center bg-[#0096c7] rounded-3xl text-white px-5 py-3 hover:bg-[#023e8a] transition-colors duration-300;
+    }
+  
+    .glass-card {
+      @apply bg-white/10 backdrop-blur-xl border border-white/20 shadow-lg rounded-3xl;
+    }
+  }
+  
