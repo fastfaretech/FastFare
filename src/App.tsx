@@ -6,6 +6,7 @@ import Dashboardadmin from "./pages/DashboardAdmin";
 import Dashboardpartner from "./pages/DashboardPartner";
 import Dashboarduser from "./pages/DashboardUser";
 import Login from "./pages/Login";
+import NewPickup from "./pages/NewPickup";
 
 
 function App() {
@@ -19,6 +20,8 @@ function App() {
         <Route path="/partnerdashboard" element={<Dashboardpartner />}></Route>
         <Route path="/userdashboard" element={<Dashboarduser />}></Route>
         <Route path="/login" element={<Login />}></Route>
+        <Route path="/partner/new-pickup" element={<NewPickup />} />
+
         {/* Add your dashboard pages here */}
 
       </Routes>
