@@ -4,7 +4,7 @@ import DashboardLayout from './components/DashboardLayout';
 import CreateAdmin from './pages/CreateAdmin';
 import Dashboardadmin from "./pages/DashboardAdmin";
 import Dashboardpartner from "./pages/DashboardPartner";
-import './App.css';
+import Dashboarduser from "./pages/DashboardUser";
 
 function App() {
   return (
@@ -15,7 +15,8 @@ function App() {
         <Route path="/admin/create-admin" element={<CreateAdmin />}></Route>
         <Route path="/admindashboard" element={<Dashboardadmin/>}></Route>
         <Route path="/partnerdashboard" element={<Dashboardpartner/>}></Route>
-                            
+        <Route path="/userdashboard" element={<Dashboarduser/>}></Route>
+                                      
           {/* Add your dashboard pages here */}
         
       </Routes>
