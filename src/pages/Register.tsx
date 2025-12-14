@@ -192,11 +192,11 @@ export default function Register() {
                                 animate="show"
                             >
                                 <motion.div className="space-y-1" variants={formItem}>
-                                    <label className="auth-label px-4 mr-2">Full Name</label>
+                                    <label className="auth-label">Full Name</label>
                                     <input
                                         {...register("name")}
                                         placeholder=" Name"
-                                        className="input-premium ml-12 py-1"
+                                        className="input-premium"
                                     />
                                     {errors.name && (
                                         <p className="text-[11px] text-red-500 mt-1">{String(errors.name.message)}</p>
@@ -204,11 +204,11 @@ export default function Register() {
                                 </motion.div>
 
                                 <motion.div className="space-y-1" variants={formItem}>
-                                    <label className="auth-label px-4 mr-8">Email</label>
+                                    <label className="auth-label">Email</label>
                                     <input
                                         {...register("email")}
                                         placeholder=" you@gmail.com"
-                                        className="input-premium ml-14 py-1"
+                                        className="input-premium"
                                     />
                                     {errors.email && (
                                         <p className="text-[11px] text-red-500 mt-1">{String(errors.email.message)}</p>
@@ -217,24 +217,24 @@ export default function Register() {
 
                                 <motion.div className="grid grid-cols-1 md:grid-cols-2 gap-3" variants={formItem}>
                                     <div className="space-y-1">
-                                        <label className="auth-label px-4 mr-3">Password</label>
+                                        <label className="auth-label">Password</label>
                                         <input
                                             {...register("password")}
                                             type="password"
                                             placeholder=" Create password"
-                                            className="input-premium ml-12 py-1"
+                                            className="input-premium"
                                         />
                                         {errors.password && (
                                             <p className="text-[11px] text-red-500 mt-1">{String(errors.password.message)}</p>
                                         )}
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="auth-label px-4">Confirm Password</label>
+                                        <label className="auth-label">Confirm Password</label>
                                         <input
                                             {...register("confirm")}
                                             type="password"
                                             placeholder=" Re-enter password"
-                                            className="input-premium py-1"
+                                            className="input-premium"
                                         />
                                         {errors.confirm && (
                                             <p className="text-[11px] text-red-500 mt-1">{String(errors.confirm.message)}</p>
