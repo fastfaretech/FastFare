@@ -8,9 +8,11 @@ import {
   useColorScheme,
   TouchableOpacity,
   ScrollView,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 
 export default function SettingsScreen() {
   const colorScheme = useColorScheme();
@@ -19,6 +21,11 @@ export default function SettingsScreen() {
   const toggleTheme = () => {
     Appearance.setColorScheme(isDark ? "light" : "dark");
   };
+
+  const handleLogout = async () => {
+      await SecureStore.deleteItemAsync("authToken");
+      router.replace("/(auth)/user-login");
+    };
 
   return (
     <SafeAreaView className="flex-1 bg-slate-100 dark:bg-slate-900">
@@ -108,7 +115,7 @@ export default function SettingsScreen() {
 
           <TouchableOpacity className="flex-row justify-between items-center">
             <View>
-              <Text className="text-base text-red-600">Log Out</Text>
+              <Text className="text-base text-red-600" onPress={handleLogout}>Log Out</Text>
               <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 Sign out of this account
               </Text>
@@ -153,6 +160,13 @@ export default function SettingsScreen() {
               </Text>
             </View>
           </TouchableOpacity>
+          {/* <TouchableOpacity onPress={async () => {
+  await SecureStore.deleteItemAsync('authToken');
+  Alert.alert('Token cleared');
+}}>
+  <Text>Clear Token</Text>
+</TouchableOpacity> */}
+
         </View>
       </ScrollView>
     </SafeAreaView>
