@@ -9,7 +9,7 @@ import { useLocalSearchParams } from "expo-router";
 import { ThemedView } from "@/components/themed-view";
 
 const LOCATION_TASK_NAME = "BACKGROUND_LOCATION_TASK";
-const GOOGLE_MAPS_APIKEY = "AIzaSyD1L11-LhqWKmwrdNmnbvDWBsonhOkXAC4";
+const GOOGLE_MAPS_APIKEY = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY;
 const API_BASE_URL = "http://172.27.25.158:3000";
 const BACKEND_URL = `${API_BASE_URL}/api/v1/driver/location`;
 const isExpoGo: boolean = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
