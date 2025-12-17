@@ -41,15 +41,14 @@ The content is organized as follows:
 
 <directory_structure>
 .gitignore
-app.json
 app/_layout.tsx
 app/(auth)/_layout.tsx
 app/(auth)/user-login.tsx
 app/(tabs)/_layout.tsx
 app/(tabs)/MyShipments.tsx
 app/(tabs)/profile.tsx
-app/(tabs)/redirect.tsx
 app/(tabs)/Settings.tsx
+app/index.tsx
 app/MapScreen.tsx
 app/modal.tsx
 app/MyShipmentsScreen.tsx
@@ -116,8 +115,21 @@ export default function AuthLayout() {
 }
 </file>
 
+<file path="app/(tabs)/MyShipments.tsx">
+// app/(tabs)/MyShipments.tsx
+import { useLocalSearchParams } from "expo-router";
+import MyShipmentsScreen from "../MyShipmentsScreen"; // adjust path
+
+export default function MyShipmentsRoute() {
+  const { token } = useLocalSearchParams<{ token?: string }>();
+
+  console.log("MyShipmentsRoute token param:", token);
+
+  return <MyShipmentsScreen token={token ?? ""} />;
+}
+</file>
+
 <file path="app/(tabs)/profile.tsx">
-// app/(tabs)/profile.tsx
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -129,6 +141,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as SecureStore from "expo-secure-store";
 import * as ImagePicker from "expo-image-picker";
+import { router } from "expo-router";
 
 const API_BASE_URL = "http://172.27.25.158:3000";
 
@@ -211,6 +224,11 @@ export default function ProfileScreen() {
       setAvatarUri(uri);
       // TODO: optionally upload avatar to backend here
     }
+  };
+
+  const handleLogout = async () => {
+    await SecureStore.deleteItemAsync("authToken");
+    router.replace("/(auth)/user-login");
   };
 
   if (loading) {
@@ -315,14 +333,9 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        {/* Actions card (edit, logout placeholders) */}
+        {/* Actions card (logout only) */}
         <View className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm">
-          <TouchableOpacity className="mb-3">
-            <Text className="text-sm text-blue-600 font-semibold">
-              Edit profile
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={handleLogout}>
             <Text className="text-sm text-red-600 font-semibold">
               Log out
             </Text>
@@ -334,229 +347,12 @@ export default function ProfileScreen() {
 }
 </file>
 
-<file path="app/(tabs)/redirect.tsx">
-import { useEffect } from "react";
+<file path="app/index.tsx">
 import { router } from "expo-router";
-import * as SecureStore from "expo-secure-store";
 
 export default function Index() {
-  useEffect(() => {
-    const checkAuth = async () => {
-      const token = await SecureStore.getItemAsync("authToken");
-      if (!token) {
-        // Not logged in, go to login
-        router.replace("/(auth)/user-login");
-      } else {
-        // Logged in, go to MyShipments
-        router.replace("/(tabs)/MyShipments");
-      }
-    };
-
-    checkAuth();
-  }, []);
-
-  return null; // This screen only redirects
-}
-</file>
-
-<file path="app/MapScreen.tsx">
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Text } from "react-native";
-import MapView, { Marker, PROVIDER_GOOGLE, Region } from "react-native-maps";
-import MapViewDirections from "react-native-maps-directions";
-import * as Location from "expo-location";
-import * as TaskManager from "expo-task-manager";
-import Constants, { ExecutionEnvironment } from "expo-constants";
-import { useLocalSearchParams } from "expo-router";
-import { ThemedView } from "@/components/themed-view";
-
-const LOCATION_TASK_NAME = "BACKGROUND_LOCATION_TASK";
-const GOOGLE_MAPS_APIKEY = "AIzaSyD1L11-LhqWKmwrdNmnbvDWBsonhOkXAC4";
-const API_BASE_URL = "http://172.27.25.158:3000";
-const BACKEND_URL = `${API_BASE_URL}/api/v1/driver/location`;
-const isExpoGo: boolean = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
-
-type ShipmentStatus = "pending" | "booked" | "in-transit" | "delivered" | "cancelled";
-
-interface Shipment {
-  _id: string;
-  shipmentId: string;
-  pickupLocation: { latitude: number; longitude: number };
-  deliveryLocation: { latitude: number; longitude: number };
-  quantity: number;
-  status: ShipmentStatus;
-  createdAt: string;
-}
-
-// Background task: ONLY used in dev/prod builds, not Expo Go
-TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
-  // Skip completely when running inside Expo Go (background not supported)
-  if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) {
-    return;
-  }
-
-  if (error) {
-    console.error("Background location error:", error);
-    return;
-  }
-  if (data) {
-    const { locations } = data as { locations: Location.LocationObject[] };
-    if (locations && locations.length > 0) {
-      const location = locations[0];
-      try {
-        await fetch(BACKEND_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
-            timestamp: new Date().toISOString(),
-          }),
-        });
-      } catch (err) {
-        console.error("Failed to send location:", err);
-      }
-    }
-  }
-});
-
-export default function MapScreen() {
-  const { shipmentId, token } = useLocalSearchParams<{
-    shipmentId?: string;
-    token?: string;
-  }>();
-
-  const [shipment, setShipment] = useState<Shipment | null>(null);
-  const [driverLocation, setDriverLocation] = useState<Location.LocationObjectCoords | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
-
-  // Fetch shipment from backend (works in Expo Go and dev/prod)
-  useEffect(() => {
-    const fetchShipment = async () => {
-      try {
-        if (!shipmentId || !token) {
-          setError("Missing shipment or token");
-          setLoading(false);
-          return;
-        }
-
-        const res = await fetch(`${API_BASE_URL}/api/v1/user/order/get/${shipmentId}`, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        const text = await res.text();
-        console.log("MAP DETAILS STATUS", res.status, "BODY", text);
-
-        if (!res.ok) {
-          setError("Shipment not found");
-          setLoading(false);
-          return;
-        }
-
-        const json = JSON.parse(text) as { shipment: Shipment };
-        setShipment(json.shipment);
-      } catch (e: any) {
-        setError(e.message ?? "Something went wrong");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchShipment();
-  }, [shipmentId, token]);
-
-  // Live location tracking:
-  // - Foreground watch ALWAYS (for driver marker)
-  // - Background updates ONLY outside Expo Go
-  useEffect(() => {
-    const startLocationTracking = async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        console.log("Permission to access location was denied");
-        return;
-      }
-
-      // Foreground updates (works in Expo Go too)
-      Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.BestForNavigation,
-          distanceInterval: 10,
-        },
-        (loc) => setDriverLocation(loc.coords)
-      );
-
-      // Background tracking only in dev/prod builds
-      if (!isExpoGo) {
-        await Location.requestBackgroundPermissionsAsync();
-
-        await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-          accuracy: Location.Accuracy.BestForNavigation,
-          showsBackgroundLocationIndicator: true,
-          foregroundService: {
-            notificationTitle: "FastFare Driver",
-            notificationBody: "Location tracking in background",
-            notificationColor: "#fff",
-          },
-        });
-      }
-    };
-
-    startLocationTracking();
-
-    return () => {
-      if (!isExpoGo) {
-        Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
-      }
-    };
-  }, [isExpoGo]);
-
-  if (loading || !shipment) {
-    if (error) {
-      return (
-        <ThemedView className="flex-1 items-center justify-center px-6">
-          <Text className="text-red-500 text-base text-center">{error}</Text>
-        </ThemedView>
-      );
-    }
-    return (
-      <ThemedView className="flex-1 items-center justify-center">
-        <ActivityIndicator />
-      </ThemedView>
-    );
-  }
-
-  const pickup = shipment.pickupLocation;
-  const destination = shipment.deliveryLocation;
-
-  const region: Region = {
-    latitude: (pickup.latitude + destination.latitude) / 2,
-    longitude: (pickup.longitude + destination.longitude) / 2,
-    latitudeDelta: Math.abs(pickup.latitude - destination.latitude) + 2,
-    longitudeDelta: Math.abs(pickup.longitude - destination.longitude) + 2,
-  };
-
-  return (
-    <ThemedView className="flex-1">
-      <MapView provider={PROVIDER_GOOGLE} style={{ flex: 1 }} initialRegion={region}>
-        <Marker coordinate={pickup} title="Pickup" />
-        <Marker coordinate={destination} title="Destination" />
-        {driverLocation && <Marker coordinate={driverLocation} title="Driver" pinColor="blue" />}
-        <MapViewDirections
-          origin={pickup}
-          destination={destination}
-          apikey={GOOGLE_MAPS_APIKEY}
-          strokeWidth={3}
-          strokeColor="blue"
-        />
-      </MapView>
-    </ThemedView>
-  );
+  router.replace("/(auth)/user-login");
+  return null;
 }
 </file>
 
@@ -906,651 +702,6 @@ export default function ShipmentDetailsScreen() {
     </SafeAreaView>
   );
 }
-</file>
-
-<file path=".gitignore">
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
-# dependencies
-node_modules/
-
-# Expo
-.expo/
-dist/
-web-build/
-expo-env.d.ts
-
-# Native
-.kotlin/
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
-
-# Metro
-.metro-health-check*
-
-# debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
-
-# macOS
-.DS_Store
-*.pem
-
-# local env files
-.env*.local
-
-# typescript
-*.tsbuildinfo
-
-app-example
-
-# generated native folders
-/ios
-/android
-</file>
-
-<file path="app/(auth)/user-login.tsx">
-// app/(auth)/user-login.tsx
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-} from "react-native";
-import { router } from "expo-router";
-import * as SecureStore from "expo-secure-store";
-
-const API_BASE_URL = "http://172.27.25.158:3000"; // your backend
-
-const UserLoginScreen: React.FC = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert("Error", "Please enter email and password");
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const res = await fetch(`${API_BASE_URL}/api/v1/user/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        Alert.alert("Login failed", data?.message || "Invalid credentials");
-        return;
-      }
-
-      const token: string | undefined = data.token;
-      if (!token) {
-        Alert.alert("Login failed", "Token missing from response");
-        return;
-      }
-
-      console.log("Login token saved:", token);
-      await SecureStore.setItemAsync("authToken", token);
-
-      // Navigate to shipments tab and pass token as a param
-      router.replace({
-        pathname: "/(tabs)/MyShipments",
-        params: { token },
-      });
-
-      Alert.alert("Success", "Logged in successfully");
-    } catch (err: any) {
-      Alert.alert("Error", err.message ?? "Network error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <KeyboardAvoidingView
-      className="flex-1 bg-blue-600"
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <View className="flex-1 px-6 pt-16 pb-10 justify-between">
-        {/* Top content */}
-        <View>
-          {/* Icon circle */}
-          <View className="w-20 h-20 rounded-full bg-white/15 items-center justify-center self-center mb-8">
-            <Text className="text-white text-3xl">🚚</Text>
-          </View>
-
-          <Text className="text-white text-2xl font-bold text-center">
-            FastFare Driver
-          </Text>
-          <Text className="text-white/90 text-sm text-center mt-1">
-            Welcome back! Please sign in.
-          </Text>
-
-          {/* Card */}
-          <View className="bg-white rounded-2xl mt-8 px-5 py-6 shadow-md">
-            <View className="mb-4">
-              <Text className="text-xs font-semibold text-slate-500 mb-1">
-                Email
-              </Text>
-              <View className="border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 flex-row items-center">
-                <TextInput
-                  className="flex-1 text-sm text-slate-800"
-                  placeholder="Enter your email"
-                  placeholderTextColor="#9CA3AF"
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  value={email}
-                  onChangeText={setEmail}
-                />
-              </View>
-            </View>
-
-            <View className="mb-5">
-              <Text className="text-xs font-semibold text-slate-500 mb-1">
-                Password
-              </Text>
-              <View className="border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 flex-row items-center">
-                <TextInput
-                  className="flex-1 text-sm text-slate-800"
-                  placeholder="Enter your password"
-                  placeholderTextColor="#9CA3AF"
-                  secureTextEntry
-                  value={password}
-                  onChangeText={setPassword}
-                />
-              </View>
-            </View>
-
-            <TouchableOpacity
-              className={`rounded-full py-3 items-center ${
-                loading ? "bg-blue-400" : "bg-blue-600"
-              }`}
-              onPress={handleLogin}
-              disabled={loading}
-            >
-              <Text className="text-white font-semibold text-sm">
-                {loading ? "Signing In..." : "Sign In"}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity className="mt-3 items-center">
-              <Text className="text-xs text-blue-600">Forgot password?</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Footer */}
-        <Text className="text-white/80 text-xs text-center">
-          © 2024 FastFare. All rights reserved.
-        </Text>
-      </View>
-    </KeyboardAvoidingView>
-  );
-};
-
-export default UserLoginScreen;
-</file>
-
-<file path="app/(tabs)/MyShipments.tsx">
-// app/(tabs)/MyShipments.tsx
-import { useLocalSearchParams } from "expo-router";
-import MyShipmentsScreen from "../MyShipmentsScreen"; // adjust path
-
-export default function MyShipmentsRoute() {
-  const { token } = useLocalSearchParams<{ token?: string }>();
-
-  console.log("MyShipmentsRoute token param:", token);
-
-  return <MyShipmentsScreen token={token ?? ""} />;
-}
-</file>
-
-<file path="app/(tabs)/Settings.tsx">
-// app/Settings.tsx
-import React from "react";
-import {
-  View,
-  Text,
-  Switch,
-  Appearance,
-  useColorScheme,
-  TouchableOpacity,
-  ScrollView,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
-
-export default function SettingsScreen() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-
-  const toggleTheme = () => {
-    Appearance.setColorScheme(isDark ? "light" : "dark");
-  };
-
-  return (
-    <SafeAreaView className="flex-1 bg-slate-100 dark:bg-slate-900">
-      {/* Header */}
-      <View className="px-4 py-4 flex-row items-center">
-        <TouchableOpacity
-          onPress={() => router.replace("/(tabs)/MyShipments")}
-          className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-700 items-center justify-center mr-3"
-        >
-          <Text className="text-slate-800 dark:text-slate-50 text-lg">←</Text>
-        </TouchableOpacity>
-        <Text className="text-xl font-semibold text-slate-900 dark:text-slate-50">
-          Settings
-        </Text>
-      </View>
-
-      <ScrollView
-        className="flex-1 px-4"
-        contentContainerStyle={{ paddingBottom: 24 }}
-      >
-        {/* Account section */}
-        <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-4 mb-2">
-          Account
-        </Text>
-        <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-4 shadow-sm">
-          <TouchableOpacity className="flex-row justify-between items-center mb-3">
-            <View>
-              <Text className="text-base text-slate-900 dark:text-slate-50">
-                Profile
-              </Text>
-              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                View and edit your information
-              </Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity className="flex-row justify-between items-center">
-            <View>
-              <Text className="text-base text-slate-900 dark:text-slate-50">
-                Notifications
-              </Text>
-              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Manage notification preferences
-              </Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        {/* Appearance section */}
-        <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-2 mb-2">
-          Appearance
-        </Text>
-        <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-4 shadow-sm">
-          <View className="flex-row justify-between items-center">
-            <View>
-              <Text className="text-base text-slate-900 dark:text-slate-50">
-                Dark Mode
-              </Text>
-              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Toggle between light and dark theme
-              </Text>
-            </View>
-            <Switch
-              value={isDark}
-              onValueChange={toggleTheme}
-              thumbColor={isDark ? "#1D4ED8" : "#ffffff"}
-              trackColor={{ false: "#CBD5F5", true: "#2563EB" }}
-            />
-          </View>
-        </View>
-
-        {/* App section */}
-        <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-2 mb-2">
-          App
-        </Text>
-        <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-4 shadow-sm">
-          <TouchableOpacity className="flex-row justify-between items-center mb-3">
-            <View>
-              <Text className="text-base text-slate-900 dark:text-slate-50">
-                Language
-              </Text>
-              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                English (default)
-              </Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity className="flex-row justify-between items-center">
-            <View>
-              <Text className="text-base text-red-600">Log Out</Text>
-              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Sign out of this account
-              </Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        {/* Help & Support section */}
-        <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-2 mb-2">
-          Help & Support
-        </Text>
-        <View className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm">
-          <TouchableOpacity className="flex-row justify-between items-center mb-3">
-            <View>
-              <Text className="text-base text-slate-900 dark:text-slate-50">
-                Help Center
-              </Text>
-              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                FAQs and app usage tips
-              </Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity className="flex-row justify-between items-center mb-3">
-            <View>
-              <Text className="text-base text-slate-900 dark:text-slate-50">
-                Contact Support
-              </Text>
-              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Chat or email FastFare support
-              </Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity className="flex-row justify-between items-center">
-            <View>
-              <Text className="text-base text-slate-900 dark:text-slate-50">
-                Report an Issue
-              </Text>
-              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Report a problem with a trip or the app
-              </Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
-</file>
-
-<file path="app/MyShipmentsScreen.tsx">
-import React, { useEffect, useMemo, useState } from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  ActivityIndicator,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
-
-type ShipmentStatus =
-  | "pending"
-  | "booked"
-  | "in-transit"
-  | "delivered"
-  | "cancelled";
-
-interface Shipment {
-  _id: string;
-  shipmentId: string;
-  pickupLocation: {
-    latitude: number;
-    longitude: number;
-  };
-  deliveryLocation: {
-    latitude: number;
-    longitude: number;
-  };
-  quantity: number;
-  status: ShipmentStatus;
-  createdAt: string;
-}
-
-interface MyShipmentsScreenProps {
-  token: string;
-}
-
-const FILTERS: { label: string; value: ShipmentStatus | "all" }[] = [
-  { label: "All", value: "all" },
-  { label: "Pending", value: "pending" },
-  { label: "Booked", value: "booked" },
-  { label: "In-transit", value: "in-transit" },
-  { label: "Delivered", value: "delivered" },
-  { label: "Cancelled", value: "cancelled" },
-];
-
-const MyShipmentsScreen: React.FC<MyShipmentsScreenProps> = ({ token }) => {
-  const [shipments, setShipments] = useState<Shipment[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<ShipmentStatus | "all">("all");
-
-  useEffect(() => {
-    if (!token) {
-      console.log("No token passed to MyShipmentsScreen");
-      setError("No token. Please log in again.");
-      setShipments([]);
-      return;
-    }
-    fetchShipments();
-  }, [token]);
-
-  const fetchShipments = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const res = await fetch(
-        "http://172.27.25.158:3000/api/v1/user/order/list",
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      console.log("using token:", token);
-      console.log("STATUS", res.status);
-      const bodyText = await res.text();
-      console.log("BODY", bodyText);
-
-      if (!res.ok) {
-        setError("Failed to load shipments");
-        setShipments([]);
-        return;
-      }
-
-      const data = JSON.parse(bodyText);
-      const apiShipments: Shipment[] = data.shipments || [];
-      setShipments(apiShipments);
-    } catch (err: any) {
-      setError(err.message ?? "Something went wrong");
-      setShipments([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filteredShipments = useMemo(() => {
-    if (filter === "all") return shipments;
-    return shipments.filter((s) => s.status === filter);
-  }, [shipments, filter]);
-
-  const renderStatusBadge = (status: ShipmentStatus) => {
-    let baseColors = "bg-amber-300 text-slate-800";
-    if (status === "pending") baseColors = "bg-amber-200 text-slate-800";
-    if (status === "in-transit") baseColors = "bg-blue-400 text-white";
-    if (status === "delivered") baseColors = "bg-green-500 text-white";
-    if (status === "cancelled") baseColors = "bg-red-500 text-white";
-
-    return (
-      <View className={`px-2 py-1 rounded-full ${baseColors}`}>
-        <Text className="text-[11px] font-semibold">
-          {status.toUpperCase()}
-        </Text>
-      </View>
-    );
-  };
-
-  const renderShipmentCard = ({ item }: { item: Shipment }) => {
-    const date = new Date(item.createdAt);
-    const timeStr = date.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    return (
-      <View className="bg-white dark:bg-slate-800 rounded-xl p-3 mb-3 shadow-sm">
-        {/* Header */}
-        <View className="flex-row justify-between items-center mb-2">
-          <Text className="font-semibold text-slate-900 dark:text-slate-50">
-            Order #{item.shipmentId}
-          </Text>
-          {renderStatusBadge(item.status)}
-        </View>
-
-        {/* Pickup */}
-        <View className="mt-1">
-          <Text className="text-xs font-semibold text-emerald-500 mb-0.5">
-            Pickup
-          </Text>
-          <Text className="text-xs text-slate-600 dark:text-slate-300">
-            Lat {item.pickupLocation.latitude.toFixed(3)}, Lng{" "}
-            {item.pickupLocation.longitude.toFixed(3)}
-          </Text>
-        </View>
-
-        {/* Drop */}
-        <View className="mt-2">
-          <Text className="text-xs font-semibold text-red-500 mb-0.5">
-            Drop
-          </Text>
-          <Text className="text-xs text-slate-600 dark:text-slate-300">
-            Lat {item.deliveryLocation.latitude.toFixed(3)}, Lng{" "}
-            {item.deliveryLocation.longitude.toFixed(3)}
-          </Text>
-        </View>
-
-        {/* Meta */}
-        <View className="flex-row justify-between mt-3 mb-2">
-          <Text className="text-xs text-slate-500 dark:text-slate-400">
-            {timeStr}
-          </Text>
-          <Text className="text-xs text-slate-500 dark:text-slate-400">
-            {item.quantity} items
-          </Text>
-        </View>
-
-        {/* Button */}
-        <TouchableOpacity
-          className="bg-blue-600 rounded-full py-2 items-center"
-          onPress={() =>
-            router.push({
-              pathname: "/ShipmentDetails",
-              params: { shipmentId: item.shipmentId, token },
-            })
-          }
-        >
-          <Text className="text-white font-semibold text-sm">
-            View Details
-          </Text>
-        </TouchableOpacity>
-      </View>
-    );
-  };
-
-  return (
-    // <SafeAreaView className="flex-1 bg-slate-100 dark:bg-slate-900">
-      <View className="flex-1 bg-slate-100 dark:bg-slate-900">
-        {/* Header */}
-        <View className="pt-12 pb-4 px-4 bg-blue-600 flex-row justify-between items-center">
-          <View>
-            <Text className="text-white text-lg font-bold">
-              FastFare Driver
-            </Text>
-            <Text className="text-white/90 mt-1 text-xs">
-              Driver ID: DRV-1001
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            onPress={fetchShipments}
-            className="w-8 h-8 rounded-full border border-white items-center justify-center"
-          >
-            <Text className="text-white text-base">↻</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Filter chips */}
-        <View className="bg-blue-600 px-4 pb-3 pt-2 flex-row">
-          {FILTERS.map((f) => {
-            const isActive = filter === f.value;
-            return (
-              <TouchableOpacity
-                key={f.value}
-                onPress={() => setFilter(f.value)}
-                className={`px-3 py-1 rounded-full mr-2 ${
-                  isActive ? "bg-white" : "bg-white/20"
-                }`}
-              >
-                <Text
-                  className={`text-xs font-medium ${
-                    isActive ? "text-blue-600" : "text-white"
-                  }`}
-                >
-                  {f.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* List */}
-        <View className="flex-1 px-3 pt-3">
-          <Text className="text-base font-semibold text-slate-900 dark:text-slate-50 mb-2">
-            My Shipments ({filteredShipments.length})
-          </Text>
-
-          {loading && <ActivityIndicator className="mt-4" />}
-
-          {error && !loading && (
-            <Text className="text-red-500 mt-2 text-sm">{error}</Text>
-          )}
-
-          {!loading && !error && (
-            <FlatList
-              data={filteredShipments}
-              keyExtractor={(item) => item._id}
-              renderItem={renderShipmentCard}
-              contentContainerStyle={{ paddingBottom: 16 }}
-              showsVerticalScrollIndicator={false}
-              ListEmptyComponent={
-                <Text className="text-xs text-slate-500 dark:text-slate-400 mt-4">
-                  No shipments found for this account.
-                </Text>
-              }
-            />
-          )}
-        </View>
-      </View>
-    // </SafeAreaView>
-  );
-};
-
-export default MyShipmentsScreen;
 </file>
 
 <file path="babel.config.js">
@@ -2233,80 +1384,565 @@ rl.question(
 );
 </file>
 
-<file path="app/_layout.tsx">
-// app/_layout.tsx
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import "../global.css";
-import { useColorScheme } from '@/hooks/use-color-scheme';
+<file path=".gitignore">
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+# dependencies
+node_modules/
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+.env
+app.json
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+app-example
+
+# generated native folders
+/ios
+/android
+</file>
+
+<file path="app/(auth)/user-login.tsx">
+// app/(auth)/user-login.tsx
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+} from "react-native";
+import { router } from "expo-router";
+import * as SecureStore from "expo-secure-store";
+
+const API_BASE_URL = "http://172.27.25.158:3000"; // your backend
+
+const UserLoginScreen: React.FC = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert("Error", "Please enter email and password");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const res = await fetch(`${API_BASE_URL}/api/v1/user/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        Alert.alert("Login failed", data?.message || "Invalid credentials");
+        return;
+      }
+
+      const token: string | undefined = data.token;
+      if (!token) {
+        Alert.alert("Login failed", "Token missing from response");
+        return;
+      }
+
+      console.log("Login token saved:", token);
+      await SecureStore.setItemAsync("authToken", token);
+
+      // Navigate to shipments tab and pass token as a param
+      router.replace({
+        pathname: "/(tabs)/MyShipments",
+        params: { token },
+      });
+
+      Alert.alert("Success", "Logged in successfully");
+    } catch (err: any) {
+      Alert.alert("Error", err.message ?? "Network error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        {/* <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} /> */}
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <KeyboardAvoidingView
+      className="flex-1 bg-blue-600"
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <View className="flex-1 px-6 pt-16 pb-10 justify-between">
+        {/* Top content */}
+        <View>
+          {/* Icon circle */}
+          <View className="w-20 h-20 rounded-full bg-white/15 items-center justify-center self-center mb-8">
+            <Text className="text-white text-3xl">🚚</Text>
+          </View>
+
+          <Text className="text-white text-2xl font-bold text-center">
+            FastFare Driver
+          </Text>
+          <Text className="text-white/90 text-sm text-center mt-1">
+            Welcome back! Please sign in.
+          </Text>
+
+          {/* Card */}
+          <View className="bg-white rounded-2xl mt-8 px-5 py-6 shadow-md">
+            <View className="mb-4">
+              <Text className="text-xs font-semibold text-slate-500 mb-1">
+                Email
+              </Text>
+              <View className="border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 flex-row items-center">
+                <TextInput
+                  className="flex-1 text-sm text-slate-800"
+                  placeholder="Enter your email"
+                  placeholderTextColor="#9CA3AF"
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  value={email}
+                  onChangeText={setEmail}
+                />
+              </View>
+            </View>
+
+            <View className="mb-5">
+              <Text className="text-xs font-semibold text-slate-500 mb-1">
+                Password
+              </Text>
+              <View className="border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 flex-row items-center">
+                <TextInput
+                  className="flex-1 text-sm text-slate-800"
+                  placeholder="Enter your password"
+                  placeholderTextColor="#9CA3AF"
+                  secureTextEntry
+                  value={password}
+                  onChangeText={setPassword}
+                />
+              </View>
+            </View>
+
+            <TouchableOpacity
+              className={`rounded-full py-3 items-center ${
+                loading ? "bg-blue-400" : "bg-blue-600"
+              }`}
+              onPress={handleLogin}
+              disabled={loading}
+            >
+              <Text className="text-white font-semibold text-sm">
+                {loading ? "Signing In..." : "Sign In"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity className="mt-3 items-center">
+              <Text className="text-xs text-blue-600">Forgot password?</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Footer */}
+        <Text className="text-white/80 text-xs text-center">
+          © 2024 FastFare. All rights reserved.
+        </Text>
+      </View>
+    </KeyboardAvoidingView>
+  );
+};
+
+export default UserLoginScreen;
+</file>
+
+<file path="app/(tabs)/Settings.tsx">
+// app/Settings.tsx
+import React from "react";
+import {
+  View,
+  Text,
+  Switch,
+  Appearance,
+  useColorScheme,
+  TouchableOpacity,
+  ScrollView,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
+
+export default function SettingsScreen() {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
+
+  const toggleTheme = () => {
+    Appearance.setColorScheme(isDark ? "light" : "dark");
+  };
+
+  return (
+    <SafeAreaView className="flex-1 bg-slate-100 dark:bg-slate-900">
+      {/* Header */}
+      <View className="px-4 py-4 flex-row items-center">
+        <TouchableOpacity
+          onPress={() => router.replace("/(tabs)/MyShipments")}
+          className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-700 items-center justify-center mr-3"
+        >
+          <Text className="text-slate-800 dark:text-slate-50 text-lg">←</Text>
+        </TouchableOpacity>
+        <Text className="text-xl font-semibold text-slate-900 dark:text-slate-50">
+          Settings
+        </Text>
+      </View>
+
+      <ScrollView
+        className="flex-1 px-4"
+        contentContainerStyle={{ paddingBottom: 24 }}
+      >
+        {/* Account section */}
+        <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-4 mb-2">
+          Account
+        </Text>
+        <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-4 shadow-sm">
+          <TouchableOpacity className="flex-row justify-between items-center mb-3">
+            <View>
+              <Text className="text-base text-slate-900 dark:text-slate-50">
+                Profile
+              </Text>
+              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                View and edit your information
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity className="flex-row justify-between items-center">
+            <View>
+              <Text className="text-base text-slate-900 dark:text-slate-50">
+                Notifications
+              </Text>
+              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Manage notification preferences
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Appearance section */}
+        <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-2 mb-2">
+          Appearance
+        </Text>
+        <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-4 shadow-sm">
+          <View className="flex-row justify-between items-center">
+            <View>
+              <Text className="text-base text-slate-900 dark:text-slate-50">
+                Dark Mode
+              </Text>
+              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Toggle between light and dark theme
+              </Text>
+            </View>
+            <Switch
+              value={isDark}
+              onValueChange={toggleTheme}
+              thumbColor={isDark ? "#1D4ED8" : "#ffffff"}
+              trackColor={{ false: "#CBD5F5", true: "#2563EB" }}
+            />
+          </View>
+        </View>
+
+        {/* App section */}
+        <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-2 mb-2">
+          App
+        </Text>
+        <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-4 shadow-sm">
+          <TouchableOpacity className="flex-row justify-between items-center mb-3">
+            <View>
+              <Text className="text-base text-slate-900 dark:text-slate-50">
+                Language
+              </Text>
+              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                English (default)
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity className="flex-row justify-between items-center">
+            <View>
+              <Text className="text-base text-red-600">Log Out</Text>
+              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Sign out of this account
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Help & Support section */}
+        <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-2 mb-2">
+          Help & Support
+        </Text>
+        <View className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm">
+          <TouchableOpacity className="flex-row justify-between items-center mb-3">
+            <View>
+              <Text className="text-base text-slate-900 dark:text-slate-50">
+                Help Center
+              </Text>
+              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                FAQs and app usage tips
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity className="flex-row justify-between items-center mb-3">
+            <View>
+              <Text className="text-base text-slate-900 dark:text-slate-50">
+                Contact Support
+              </Text>
+              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Chat or email FastFare support
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity className="flex-row justify-between items-center">
+            <View>
+              <Text className="text-base text-slate-900 dark:text-slate-50">
+                Report an Issue
+              </Text>
+              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Report a problem with a trip or the app
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 </file>
 
-<file path="app/(tabs)/_layout.tsx">
-import { Tabs } from 'expo-router';
-import React from 'react';
+<file path="app/MapScreen.tsx">
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, Text } from "react-native";
+import MapView, { Marker, PROVIDER_GOOGLE, Region } from "react-native-maps";
+import MapViewDirections from "react-native-maps-directions";
+import * as Location from "expo-location";
+import * as TaskManager from "expo-task-manager";
+import Constants, { ExecutionEnvironment } from "expo-constants";
+import { useLocalSearchParams } from "expo-router";
+import { ThemedView } from "@/components/themed-view";
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+const LOCATION_TASK_NAME = "BACKGROUND_LOCATION_TASK";
+const GOOGLE_MAPS_APIKEY = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY;
+const API_BASE_URL = "http://172.27.25.158:3000";
+const BACKEND_URL = `${API_BASE_URL}/api/v1/driver/location`;
+const isExpoGo: boolean = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
-export const unstable_settings = {
-  initialRouteName: 'MyShipments',
+type ShipmentStatus = "pending" | "booked" | "in-transit" | "delivered" | "cancelled";
+
+interface Shipment {
+  _id: string;
+  shipmentId: string;
+  pickupLocation: { latitude: number; longitude: number };
+  deliveryLocation: { latitude: number; longitude: number };
+  quantity: number;
+  status: ShipmentStatus;
+  createdAt: string;
 }
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+// Background task: ONLY used in dev/prod builds, not Expo Go
+TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
+  // Skip completely when running inside Expo Go (background not supported)
+  if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) {
+    return;
+  }
+
+  if (error) {
+    console.error("Background location error:", error);
+    return;
+  }
+  if (data) {
+    const { locations } = data as { locations: Location.LocationObject[] };
+    if (locations && locations.length > 0) {
+      const location = locations[0];
+      try {
+        await fetch(BACKEND_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+            timestamp: new Date().toISOString(),
+          }),
+        });
+      } catch (err) {
+        console.error("Failed to send location:", err);
+      }
+    }
+  }
+});
+
+export default function MapScreen() {
+  const { shipmentId, token } = useLocalSearchParams<{
+    shipmentId?: string;
+    token?: string;
+  }>();
+
+  const [shipment, setShipment] = useState<Shipment | null>(null);
+  const [driverLocation, setDriverLocation] = useState<Location.LocationObjectCoords | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+  // Fetch shipment from backend (works in Expo Go and dev/prod)
+  useEffect(() => {
+    const fetchShipment = async () => {
+      try {
+        if (!shipmentId || !token) {
+          setError("Missing shipment or token");
+          setLoading(false);
+          return;
+        }
+
+        const res = await fetch(`${API_BASE_URL}/api/v1/user/order/get/${shipmentId}`, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const text = await res.text();
+        console.log("MAP DETAILS STATUS", res.status, "BODY", text);
+
+        if (!res.ok) {
+          setError("Shipment not found");
+          setLoading(false);
+          return;
+        }
+
+        const json = JSON.parse(text) as { shipment: Shipment };
+        setShipment(json.shipment);
+      } catch (e: any) {
+        setError(e.message ?? "Something went wrong");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchShipment();
+  }, [shipmentId, token]);
+
+  // Live location tracking:
+  // - Foreground watch ALWAYS (for driver marker)
+  // - Background updates ONLY outside Expo Go
+  useEffect(() => {
+    const startLocationTracking = async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        console.log("Permission to access location was denied");
+        return;
+      }
+
+      // Foreground updates (works in Expo Go too)
+      Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.BestForNavigation,
+          distanceInterval: 10,
+        },
+        (loc) => setDriverLocation(loc.coords)
+      );
+
+      // Background tracking only in dev/prod builds
+      if (!isExpoGo) {
+        await Location.requestBackgroundPermissionsAsync();
+
+        await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+          accuracy: Location.Accuracy.BestForNavigation,
+          showsBackgroundLocationIndicator: true,
+          foregroundService: {
+            notificationTitle: "FastFare Driver",
+            notificationBody: "Location tracking in background",
+            notificationColor: "#fff",
+          },
+        });
+      }
+    };
+
+    startLocationTracking();
+
+    return () => {
+      if (!isExpoGo) {
+        Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
+      }
+    };
+  }, [isExpoGo]);
+
+  if (loading || !shipment) {
+    if (error) {
+      return (
+        <ThemedView className="flex-1 items-center justify-center px-6">
+          <Text className="text-red-500 text-base text-center">{error}</Text>
+        </ThemedView>
+      );
+    }
+    return (
+      <ThemedView className="flex-1 items-center justify-center">
+        <ActivityIndicator />
+      </ThemedView>
+    );
+  }
+
+  const pickup = shipment.pickupLocation;
+  const destination = shipment.deliveryLocation;
+
+  const region: Region = {
+    latitude: (pickup.latitude + destination.latitude) / 2,
+    longitude: (pickup.longitude + destination.longitude) / 2,
+    latitudeDelta: Math.abs(pickup.latitude - destination.latitude) + 2,
+    longitudeDelta: Math.abs(pickup.longitude - destination.longitude) + 2,
+  };
 
   return (
-    <Tabs
-      initialRouteName='MyShipments'
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
-      <Tabs.Screen
-        name="MyShipments"
-        options={{
-          title: 'My Shipments',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="shippingbox.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.crop.circle" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="Settings"
-        options={{
-          title: 'Settings',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="gearshape.fill" color={color} />,
-        }}
-      />
-    </Tabs>
+    <ThemedView className="flex-1">
+      <MapView provider={PROVIDER_GOOGLE} style={{ flex: 1 }} initialRegion={region}>
+        <Marker coordinate={pickup} title="Pickup" />
+        <Marker coordinate={destination} title="Destination" />
+        {driverLocation && <Marker coordinate={driverLocation} title="Driver" pinColor="blue" />}
+        <MapViewDirections
+          origin={pickup}
+          destination={destination}
+          apikey={GOOGLE_MAPS_APIKEY}
+          strokeWidth={3}
+          strokeColor="blue"
+        />
+      </MapView>
+    </ThemedView>
   );
 }
 </file>
@@ -2341,6 +1977,276 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
   },
 });
+</file>
+
+<file path="app/MyShipmentsScreen.tsx">
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
+
+type ShipmentStatus =
+  | "pending"
+  | "booked"
+  | "in-transit"
+  | "delivered"
+  | "cancelled";
+
+interface Shipment {
+  _id: string;
+  shipmentId: string;
+  pickupLocation: {
+    latitude: number;
+    longitude: number;
+  };
+  deliveryLocation: {
+    latitude: number;
+    longitude: number;
+  };
+  quantity: number;
+  status: ShipmentStatus;
+  createdAt: string;
+}
+
+interface MyShipmentsScreenProps {
+  token: string;
+}
+
+const FILTERS: { label: string; value: ShipmentStatus | "all" }[] = [
+  { label: "All", value: "all" },
+  { label: "Pending", value: "pending" },
+  { label: "Booked", value: "booked" },
+  { label: "In-transit", value: "in-transit" },
+  { label: "Delivered", value: "delivered" },
+  { label: "Cancelled", value: "cancelled" },
+];
+
+const MyShipmentsScreen: React.FC<MyShipmentsScreenProps> = ({ token }) => {
+  const [shipments, setShipments] = useState<Shipment[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<ShipmentStatus | "all">("all");
+
+  useEffect(() => {
+    if (!token) {
+      console.log("No token passed to MyShipmentsScreen");
+      setError("No token. Please log in again.");
+      setShipments([]);
+      return;
+    }
+    fetchShipments();
+  }, [token]);
+
+  const fetchShipments = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const res = await fetch(
+        "http://172.27.25.158:3000/api/v1/user/order/list",
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      console.log("using token:", token);
+      console.log("STATUS", res.status);
+      const bodyText = await res.text();
+      console.log("BODY", bodyText);
+
+      if (!res.ok) {
+        setError("Failed to load shipments");
+        setShipments([]);
+        return;
+      }
+
+      const data = JSON.parse(bodyText);
+      const apiShipments: Shipment[] = data.shipments || [];
+      setShipments(apiShipments);
+    } catch (err: any) {
+      setError(err.message ?? "Something went wrong");
+      setShipments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredShipments = useMemo(() => {
+    if (filter === "all") return shipments;
+    return shipments.filter((s) => s.status === filter);
+  }, [shipments, filter]);
+
+  const renderStatusBadge = (status: ShipmentStatus) => {
+    let baseColors = "bg-amber-300 text-slate-800";
+    if (status === "pending") baseColors = "bg-amber-200 text-slate-800";
+    if (status === "in-transit") baseColors = "bg-blue-400 text-white";
+    if (status === "delivered") baseColors = "bg-green-500 text-white";
+    if (status === "cancelled") baseColors = "bg-red-500 text-white";
+
+    return (
+      <View className={`px-2 py-1 rounded-full ${baseColors}`}>
+        <Text className="text-[11px] font-semibold">
+          {status.toUpperCase()}
+        </Text>
+      </View>
+    );
+  };
+
+  const renderShipmentCard = ({ item }: { item: Shipment }) => {
+    const date = new Date(item.createdAt);
+    const timeStr = date.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    return (
+      <View className="bg-white dark:bg-slate-800 rounded-xl p-3 mb-3 shadow-sm">
+        {/* Header */}
+        <View className="flex-row justify-between items-center mb-2">
+          <Text className="font-semibold text-slate-900 dark:text-slate-50">
+            Order #{item.shipmentId}
+          </Text>
+          {renderStatusBadge(item.status)}
+        </View>
+
+        {/* Pickup */}
+        <View className="mt-1">
+          <Text className="text-xs font-semibold text-emerald-500 mb-0.5">
+            Pickup
+          </Text>
+          <Text className="text-xs text-slate-600 dark:text-slate-300">
+            Lat {item.pickupLocation.latitude.toFixed(3)}, Lng{" "}
+            {item.pickupLocation.longitude.toFixed(3)}
+          </Text>
+        </View>
+
+        {/* Drop */}
+        <View className="mt-2">
+          <Text className="text-xs font-semibold text-red-500 mb-0.5">
+            Drop
+          </Text>
+          <Text className="text-xs text-slate-600 dark:text-slate-300">
+            Lat {item.deliveryLocation.latitude.toFixed(3)}, Lng{" "}
+            {item.deliveryLocation.longitude.toFixed(3)}
+          </Text>
+        </View>
+
+        {/* Meta */}
+        <View className="flex-row justify-between mt-3 mb-2">
+          <Text className="text-xs text-slate-500 dark:text-slate-400">
+            {timeStr}
+          </Text>
+          <Text className="text-xs text-slate-500 dark:text-slate-400">
+            {item.quantity} items
+          </Text>
+        </View>
+
+        {/* Button */}
+        <TouchableOpacity
+          className="bg-blue-600 rounded-full py-2 items-center"
+          onPress={() =>
+            router.push({
+              pathname: "/ShipmentDetails",
+              params: { shipmentId: item.shipmentId, token },
+            })
+          }
+        >
+          <Text className="text-white font-semibold text-sm">
+            View Details
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  return (
+    // <SafeAreaView className="flex-1 bg-slate-100 dark:bg-slate-900">
+      <View className="flex-1 bg-slate-100 dark:bg-slate-900">
+        {/* Header */}
+        <View className="pt-12 pb-4 px-4 bg-blue-600 flex-row justify-between items-center">
+          <View>
+            <Text className="text-white text-lg font-bold">
+              FastFare Driver
+            </Text>
+            <Text className="text-white/90 mt-1 text-xs">
+              Driver ID: DRV-1001
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            onPress={fetchShipments}
+            className="w-8 h-8 rounded-full border border-white items-center justify-center"
+          >
+            <Text className="text-white text-base">↻</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Filter chips */}
+        <View className="bg-blue-600 px-4 pb-3 pt-2 flex-row">
+          {FILTERS.map((f) => {
+            const isActive = filter === f.value;
+            return (
+              <TouchableOpacity
+                key={f.value}
+                onPress={() => setFilter(f.value)}
+                className={`px-3 py-1 rounded-full mr-2 ${
+                  isActive ? "bg-white" : "bg-white/20"
+                }`}
+              >
+                <Text
+                  className={`text-xs font-medium ${
+                    isActive ? "text-blue-600" : "text-white"
+                  }`}
+                >
+                  {f.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* List */}
+        <View className="flex-1 px-3 pt-3">
+          <Text className="text-base font-semibold text-slate-900 dark:text-slate-50 mb-2">
+            My Shipments ({filteredShipments.length})
+          </Text>
+
+          {loading && <ActivityIndicator className="mt-4" />}
+
+          {error && !loading && (
+            <Text className="text-red-500 mt-2 text-sm">{error}</Text>
+          )}
+
+          {!loading && !error && (
+            <FlatList
+              data={filteredShipments}
+              keyExtractor={(item) => item._id}
+              renderItem={renderShipmentCard}
+              contentContainerStyle={{ paddingBottom: 16 }}
+              showsVerticalScrollIndicator={false}
+              ListEmptyComponent={
+                <Text className="text-xs text-slate-500 dark:text-slate-400 mt-4">
+                  No shipments found for this account.
+                </Text>
+              }
+            />
+          )}
+        </View>
+      </View>
+    // </SafeAreaView>
+  );
+};
+
+export default MyShipmentsScreen;
 </file>
 
 <file path="app/qr-scan.tsx">
@@ -2464,70 +2370,81 @@ module.exports = {
 }
 </file>
 
-<file path="app.json">
-{
-  "expo": {
-    "name": "fastfare_frontend",
-    "slug": "fastfare_frontend",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "fastfarefrontend",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "ios": {
-      "supportsTablet": true,
-      "config": {
-        "googleMapsApiKey": "AIzaSyD1L11-LhqWKmwrdNmnbvDWBsonhOkXAC4"
-      }
-    },
-    "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
-      },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyD1L11-LhqWKmwrdNmnbvDWBsonhOkXAC4"
-        }
-      },
-      "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.CAMERA"
-      ],
-      "package": "com.nishant_jain.fastfare_frontend"
-    },
-    "web": {
-      "output": "static",
-      "favicon": "./assets/images/favicon.png",
-      "bundler": "metro"
-    },
-    "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
-          "dark": {
-            "backgroundColor": "#000000"
-          }
-        }
-      ],
-      "expo-secure-store",
-      "expo-barcode-scanner"
-    ],
-    "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
-    }
-  }
+<file path="app/_layout.tsx">
+// app/_layout.tsx
+import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import "../global.css";
+import { useColorScheme } from '@/hooks/use-color-scheme';
+
+export const unstable_settings = {
+  anchor: '/(auth)',
+};
+
+export default function RootLayout() {
+  const colorScheme = useColorScheme();
+
+  return (
+    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <Stack>
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        {/* <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} /> */}
+      </Stack>
+      <StatusBar style="auto" />
+    </ThemeProvider>
+  );
+}
+</file>
+
+<file path="app/(tabs)/_layout.tsx">
+import { Tabs } from 'expo-router';
+import React from 'react';
+
+import { HapticTab } from '@/components/haptic-tab';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+
+export const unstable_settings = {
+  initialRouteName: 'MyShipments',
+}
+
+export default function TabLayout() {
+  const colorScheme = useColorScheme();
+
+  return (
+    <Tabs
+      initialRouteName='MyShipments'
+      screenOptions={{
+        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        headerShown: false,
+        tabBarButton: HapticTab,
+      }}>
+      <Tabs.Screen
+        name="MyShipments"
+        options={{
+          title: 'My Shipments',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="shippingbox.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.crop.circle" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="Settings"
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="gearshape.fill" color={color} />,
+        }}
+      />
+    </Tabs>
+  );
 }
 </file>
 
@@ -2549,6 +2466,7 @@ module.exports = {
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",
+    "dotenv": "^17.2.3",
     "expo": "~54.0.29",
     "expo-barcode-scanner": "^13.0.1",
     "expo-camera": "~17.0.10",
