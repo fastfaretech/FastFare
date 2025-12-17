@@ -173,7 +173,7 @@ const MyShipmentsScreen: React.FC<MyShipmentsScreenProps> = ({ token }) => {
           className="bg-blue-600 rounded-full py-2 items-center"
           onPress={() =>
             router.push({
-              pathname: "/(tabs)/ShipmentDetails",
+              pathname: "/ShipmentDetails",
               params: { shipmentId: item.shipmentId, token },
             })
           }
@@ -187,7 +187,7 @@ const MyShipmentsScreen: React.FC<MyShipmentsScreenProps> = ({ token }) => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-100 dark:bg-slate-900">
+    // <SafeAreaView className="flex-1 bg-slate-100 dark:bg-slate-900">
       <View className="flex-1 bg-slate-100 dark:bg-slate-900">
         {/* Header */}
         <View className="pt-12 pb-4 px-4 bg-blue-600 flex-row justify-between items-center">
@@ -260,7 +260,7 @@ const MyShipmentsScreen: React.FC<MyShipmentsScreenProps> = ({ token }) => {
           )}
         </View>
       </View>
-    </SafeAreaView>
+    // </SafeAreaView>
   );
 };
 

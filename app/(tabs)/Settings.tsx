@@ -1,4 +1,4 @@
-// app/settings.tsx
+// app/Settings.tsx
 import React from "react";
 import {
   View,
@@ -25,7 +25,7 @@ export default function SettingsScreen() {
       {/* Header */}
       <View className="px-4 py-4 flex-row items-center">
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => router.replace("/(tabs)/MyShipments")}
           className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-700 items-center justify-center mr-3"
         >
           <Text className="text-slate-800 dark:text-slate-50 text-lg">←</Text>
@@ -67,7 +67,7 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Appearance section with dark mode */}
+        {/* Appearance section */}
         <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-2 mb-2">
           Appearance
         </Text>
@@ -94,7 +94,7 @@ export default function SettingsScreen() {
         <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-2 mb-2">
           App
         </Text>
-        <View className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm">
+        <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-4 shadow-sm">
           <TouchableOpacity className="flex-row justify-between items-center mb-3">
             <View>
               <Text className="text-base text-slate-900 dark:text-slate-50">
@@ -108,11 +108,48 @@ export default function SettingsScreen() {
 
           <TouchableOpacity className="flex-row justify-between items-center">
             <View>
-              <Text className="text-base text-red-600">
-                Log Out
-              </Text>
+              <Text className="text-base text-red-600">Log Out</Text>
               <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 Sign out of this account
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Help & Support section */}
+        <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-2 mb-2">
+          Help & Support
+        </Text>
+        <View className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm">
+          <TouchableOpacity className="flex-row justify-between items-center mb-3">
+            <View>
+              <Text className="text-base text-slate-900 dark:text-slate-50">
+                Help Center
+              </Text>
+              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                FAQs and app usage tips
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity className="flex-row justify-between items-center mb-3">
+            <View>
+              <Text className="text-base text-slate-900 dark:text-slate-50">
+                Contact Support
+              </Text>
+              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Chat or email FastFare support
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity className="flex-row justify-between items-center">
+            <View>
+              <Text className="text-base text-slate-900 dark:text-slate-50">
+                Report an Issue
+              </Text>
+              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Report a problem with a trip or the app
               </Text>
             </View>
           </TouchableOpacity>

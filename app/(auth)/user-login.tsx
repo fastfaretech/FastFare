@@ -51,7 +51,7 @@ const UserLoginScreen: React.FC = () => {
       await SecureStore.setItemAsync("authToken", token);
 
       // Navigate to shipments tab and pass token as a param
-      router.push({
+      router.replace({
         pathname: "/(tabs)/MyShipments",
         params: { token },
       });

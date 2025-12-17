@@ -9,7 +9,10 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "config": {
+        "googleMapsApiKey": "AIzaSyD1L11-LhqWKmwrdNmnbvDWBsonhOkXAC4"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +22,17 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyD1L11-LhqWKmwrdNmnbvDWBsonhOkXAC4"
+        }
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.CAMERA"
+      ],
+      "package": "com.nishant_jain.fastfare_frontend"
     },
     "web": {
       "output": "static",

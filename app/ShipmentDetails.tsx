@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
+import * as Location from "expo-location";
 
 type ShipmentStatus =
   | "pending"
@@ -34,6 +35,32 @@ interface Shipment {
 
 const API_BASE_URL = "http://172.27.25.158:3000";
 
+async function coordsToAddressString(lat: number, lng: number) {
+  try {
+    const res = await Location.reverseGeocodeAsync({
+      latitude: lat,
+      longitude: lng,
+    });
+
+    if (!res.length) return "";
+
+    const addr = res[0];
+    return [
+      addr.name,
+      addr.street,
+      addr.city,
+      addr.region,
+      addr.postalCode,
+      addr.country,
+    ]
+      .filter(Boolean)
+      .join(", ");
+  } catch (e) {
+    console.log("reverseGeocode error", e);
+    return "";
+  }
+}
+
 export default function ShipmentDetailsScreen() {
   const { shipmentId, token } = useLocalSearchParams<{
     shipmentId?: string;
@@ -43,6 +70,8 @@ export default function ShipmentDetailsScreen() {
   const [shipment, setShipment] = useState<Shipment | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pickupAddress, setPickupAddress] = useState("");
+  const [dropAddress, setDropAddress] = useState("");
 
   useEffect(() => {
     console.log("DETAILS params:", { shipmentId, token });
@@ -79,7 +108,18 @@ export default function ShipmentDetailsScreen() {
       }
 
       const data = JSON.parse(text);
-      setShipment(data.shipment);
+      const s: Shipment = data.shipment;
+      setShipment(s);
+
+      // Fire reverse‑geocoding in parallel
+      coordsToAddressString(
+        s.pickupLocation.latitude,
+        s.pickupLocation.longitude
+      ).then(setPickupAddress);
+      coordsToAddressString(
+        s.deliveryLocation.latitude,
+        s.deliveryLocation.longitude
+      ).then(setDropAddress);
     } catch (e: any) {
       setError(e.message ?? "Something went wrong");
     } finally {
@@ -197,7 +237,7 @@ export default function ShipmentDetailsScreen() {
               </Text>
             </View>
             <Text className="text-sm text-slate-700 dark:text-slate-100 mb-2">
-              123 Main St, Downtown, New York, NY 10001
+              {pickupAddress || "Resolving pickup address..."}
             </Text>
             <Text className="text-xs text-slate-500 dark:text-slate-300">
               {shipment.pickupLocation.latitude.toFixed(6)},{" "}
@@ -224,7 +264,7 @@ export default function ShipmentDetailsScreen() {
               </Text>
             </View>
             <Text className="text-sm text-slate-700 dark:text-slate-100 mb-2">
-              456 Park Ave, Midtown, New York, NY 10022
+              {dropAddress || "Resolving drop address..."}
             </Text>
             <Text className="text-xs text-slate-500 dark:text-slate-300">
               {shipment.deliveryLocation.latitude.toFixed(6)},{" "}
@@ -234,7 +274,18 @@ export default function ShipmentDetailsScreen() {
 
           {/* Buttons */}
           <TouchableOpacity className="bg-blue-600 rounded-full py-3.5 items-center mb-2">
-            <Text className="text-white font-semibold text-base">
+            <Text
+              className="text-white font-semibold text-base"
+              onPress={() =>
+                router.push({
+                  pathname: "/MapScreen",
+                  params: {
+                    shipmentId: shipment.shipmentId,
+                    token,
+                  },
+                })
+              }
+            >
               View Route on Map
             </Text>
           </TouchableOpacity>
