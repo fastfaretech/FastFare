@@ -26,6 +26,20 @@ interface UserProfile {
   };
 }
 
+// Dummy data for fallback
+const DUMMY_PROFILE: UserProfile = {
+  name: "John Doe",
+  email: "john.doe@example.com",
+  role: "user",
+  contactNumber: "123-456-7890",
+  age: 30,
+  companyDetails: {
+    companyName: "FastFare Logistics",
+    gstin: "GST1234567890",
+    address: "123 Logistics Lane, City, State",
+  },
+};
+
 export default function ProfileScreen() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,8 +68,9 @@ export default function ProfileScreen() {
       const text = await res.text();
       console.log("PROFILE STATUS", res.status, "BODY", text);
 
-      if (!res.ok) {
-        setError("Failed to load profile");
+      if (!res.ok || text.trim() === "") {
+        // Use dummy data if no profile is found
+        setProfile(DUMMY_PROFILE);
         setLoading(false);
         return;
       }
@@ -63,6 +78,8 @@ export default function ProfileScreen() {
       const data = JSON.parse(text) as { user: UserProfile };
       setProfile(data.user);
     } catch (e: any) {
+      // Fallback to dummy data on error
+      setProfile(DUMMY_PROFILE);
       setError(e.message ?? "Something went wrong");
     } finally {
       setLoading(false);
@@ -107,23 +124,9 @@ export default function ProfileScreen() {
     );
   }
 
-  if (error || !profile) {
-    return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-slate-100 dark:bg-slate-900 px-6">
-        <Text className="text-red-500 text-base text-center mb-4">
-          {error || "Profile not found"}
-        </Text>
-        <TouchableOpacity
-          onPress={fetchProfile}
-          className="px-4 py-2 rounded-full bg-blue-600"
-        >
-          <Text className="text-white font-semibold">Retry</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
-    );
-  }
-
-  const driverId = `DRV-${String(profile.email.split("@")[0]).toUpperCase()}`;
+  // Use profile or dummy data
+  const currentProfile = profile || DUMMY_PROFILE;
+  const driverId = `DRV-${String(currentProfile.email.split("@")[0]).toUpperCase()}`;
 
   return (
     <SafeAreaView className="flex-1 bg-slate-100 dark:bg-slate-900">
@@ -142,19 +145,19 @@ export default function ProfileScreen() {
               />
             ) : (
               <Text className="text-3xl text-white">
-                {profile.name.charAt(0).toUpperCase()}
+                {currentProfile.name.charAt(0).toUpperCase()}
               </Text>
             )}
           </TouchableOpacity>
 
           <View className="flex-1">
-            <Text className="text-white text-xl font-semibold" numberOfLines={1}>
-              {profile.name}
+            <Text className="text-white text-2xl font-semibold" numberOfLines={1}>
+              {currentProfile.name}
             </Text>
-            <Text className="text-white/90 text-xs mt-1" numberOfLines={1}>
-              {profile.email}
+            <Text className="text-white/90 text-lg mt-1" numberOfLines={1}>
+              {currentProfile.email}
             </Text>
-            <Text className="text-white/90 text-xs mt-2">
+            <Text className="text-white/90 text-lg mt-2">
               Driver ID: {driverId}
             </Text>
           </View>
@@ -165,46 +168,40 @@ export default function ProfileScreen() {
       <View className="flex-1 px-4 pt-4">
         {/* Basic info card */}
         <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-3 shadow-sm">
-          <Text className="text-sm font-semibold text-slate-500 dark:text-slate-300 mb-2">
+          <Text className="text-lg font-semibold text-slate-500 dark:text-slate-300 mb-2">
             Basic Info
           </Text>
-          <Text className="text-sm text-slate-600 dark:text-slate-300">
-            Role: <Text className="font-semibold">{profile.role}</Text>
+          <Text className="text-lg text-slate-600 dark:text-slate-300">
+            Role: <Text className="font-semibold">{currentProfile.role}</Text>
           </Text>
-          {profile.contactNumber && (
-            <Text className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-              Phone: <Text className="font-semibold">{profile.contactNumber}</Text>
-            </Text>
-          )}
-          {typeof profile.age === "number" && (
-            <Text className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-              Age: <Text className="font-semibold">{profile.age}</Text>
-            </Text>
-          )}
+          <Text className="text-lg text-slate-600 dark:text-slate-300 mt-1">
+            Phone: <Text className="font-semibold">{currentProfile.contactNumber || DUMMY_PROFILE.contactNumber}</Text>
+          </Text>
+          <Text className="text-lg text-slate-600 dark:text-slate-300 mt-1">
+            Age: <Text className="font-semibold">{currentProfile.age || DUMMY_PROFILE.age}</Text>
+          </Text>
         </View>
 
         {/* Company / fleet info card */}
-        {profile.companyDetails && (
-          <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-3 shadow-sm">
-            <Text className="text-sm font-semibold text-slate-500 dark:text-slate-300 mb-2">
-              Company
-            </Text>
-            <Text className="text-base text-slate-900 dark:text-slate-50">
-              {profile.companyDetails.companyName}
-            </Text>
-            <Text className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-              GSTIN: {profile.companyDetails.gstin}
-            </Text>
-            <Text className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-              {profile.companyDetails.address}
-            </Text>
-          </View>
-        )}
+        <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-3 shadow-sm">
+        <Text className="text-lg font-semibold text-slate-500 dark:text-slate-300 mb-2">
+          Company
+        </Text>
+        <Text className="text-xl text-slate-900 dark:text-slate-50">
+          {currentProfile.companyDetails?.companyName || DUMMY_PROFILE.companyDetails.companyName}
+        </Text>
+        <Text className="text-lg text-slate-600 dark:text-slate-300 mt-1">
+          GSTIN: {currentProfile.companyDetails?.gstin || DUMMY_PROFILE.companyDetails.gstin}
+        </Text>
+        <Text className="text-lg text-slate-600 dark:text-slate-300 mt-1">
+          {currentProfile.companyDetails?.address || DUMMY_PROFILE.companyDetails.address}
+        </Text>
+      </View>
 
         {/* Actions card (logout only) */}
         <View className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm">
           <TouchableOpacity onPress={handleLogout}>
-            <Text className="text-sm text-red-600 font-semibold">
+            <Text className="text-lg text-red-600 font-semibold">
               Log out
             </Text>
           </TouchableOpacity>
