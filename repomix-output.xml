@@ -66,6 +66,7 @@ components/ui/collapsible.tsx
 components/ui/icon-symbol.ios.tsx
 components/ui/icon-symbol.tsx
 constants/theme.ts
+eas.json
 eslint.config.js
 global.css
 hooks/use-color-scheme.ts
@@ -82,6 +83,30 @@ tsconfig.json
 
 <files>
 This section contains the contents of the repository's files.
+
+<file path="eas.json">
+{
+  "cli": {
+    "version": ">= 16.28.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {
+      "autoIncrement": true
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
+</file>
 
 <file path="app.config.js">
 import 'dotenv/config';
@@ -147,6 +172,11 @@ export default {
     typedRoutes: true,
     reactCompiler: true,
   },
+  extra: {
+    eas: {
+      projectId: "5168d1ff-4fa5-43c6-8849-882a4fa70b31",
+    },
+  },
 };
 </file>
 
@@ -194,224 +224,6 @@ export default function MyShipmentsRoute() {
   console.log("MyShipmentsRoute token param:", token);
 
   return <MyShipmentsScreen token={token ?? ""} />;
-}
-</file>
-
-<file path="app/(tabs)/profile.tsx">
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  ActivityIndicator,
-  TouchableOpacity,
-  Image,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import * as SecureStore from "expo-secure-store";
-import * as ImagePicker from "expo-image-picker";
-import { router } from "expo-router";
-
-const API_BASE_URL = "http://172.27.25.158:3000";
-
-interface UserProfile {
-  name: string;
-  email: string;
-  role: "admin" | "logistic" | "user";
-  contactNumber?: string;
-  age?: number;
-  companyDetails?: {
-    companyName: string;
-    gstin: string;
-    address: string;
-  };
-}
-
-export default function ProfileScreen() {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [avatarUri, setAvatarUri] = useState<string | null>(null);
-
-  const fetchProfile = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const token = await SecureStore.getItemAsync("authToken");
-      if (!token) {
-        setError("Not authenticated. Please log in again.");
-        setLoading(false);
-        return;
-      }
-
-      const res = await fetch(`${API_BASE_URL}/api/v1/user/me`, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const text = await res.text();
-      console.log("PROFILE STATUS", res.status, "BODY", text);
-
-      if (!res.ok) {
-        setError("Failed to load profile");
-        setLoading(false);
-        return;
-      }
-
-      const data = JSON.parse(text) as { user: UserProfile };
-      setProfile(data.user);
-    } catch (e: any) {
-      setError(e.message ?? "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchProfile();
-  }, []);
-
-  const pickAvatar = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      console.log("Permission to access photos was denied");
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.7,
-      allowsEditing: true,
-      aspect: [1, 1],
-    });
-
-    if (!result.canceled && result.assets?.length) {
-      const uri = result.assets[0].uri;
-      setAvatarUri(uri);
-      // TODO: optionally upload avatar to backend here
-    }
-  };
-
-  const handleLogout = async () => {
-    await SecureStore.deleteItemAsync("authToken");
-    router.replace("/(auth)/user-login");
-  };
-
-  if (loading) {
-    return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-slate-100 dark:bg-slate-900">
-        <ActivityIndicator />
-      </SafeAreaView>
-    );
-  }
-
-  if (error || !profile) {
-    return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-slate-100 dark:bg-slate-900 px-6">
-        <Text className="text-red-500 text-base text-center mb-4">
-          {error || "Profile not found"}
-        </Text>
-        <TouchableOpacity
-          onPress={fetchProfile}
-          className="px-4 py-2 rounded-full bg-blue-600"
-        >
-          <Text className="text-white font-semibold">Retry</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
-    );
-  }
-
-  const driverId = `DRV-${String(profile.email.split("@")[0]).toUpperCase()}`;
-
-  return (
-    <SafeAreaView className="flex-1 bg-slate-100 dark:bg-slate-900">
-      {/* Header gradient-style block */}
-      <View className="px-4 pt-10 pb-6 bg-blue-600 rounded-b-3xl">
-        <View className="flex-row items-center">
-          {/* Avatar circle */}
-          <TouchableOpacity
-            onPress={pickAvatar}
-            className="w-20 h-20 rounded-full bg-white/15 items-center justify-center mr-4 overflow-hidden"
-          >
-            {avatarUri ? (
-              <Image
-                source={{ uri: avatarUri }}
-                style={{ width: 80, height: 80, borderRadius: 40 }}
-              />
-            ) : (
-              <Text className="text-3xl text-white">
-                {profile.name.charAt(0).toUpperCase()}
-              </Text>
-            )}
-          </TouchableOpacity>
-
-          <View className="flex-1">
-            <Text className="text-white text-xl font-semibold" numberOfLines={1}>
-              {profile.name}
-            </Text>
-            <Text className="text-white/90 text-xs mt-1" numberOfLines={1}>
-              {profile.email}
-            </Text>
-            <Text className="text-white/90 text-xs mt-2">
-              Driver ID: {driverId}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Content cards */}
-      <View className="flex-1 px-4 pt-4">
-        {/* Basic info card */}
-        <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-3 shadow-sm">
-          <Text className="text-sm font-semibold text-slate-500 dark:text-slate-300 mb-2">
-            Basic Info
-          </Text>
-          <Text className="text-sm text-slate-600 dark:text-slate-300">
-            Role: <Text className="font-semibold">{profile.role}</Text>
-          </Text>
-          {profile.contactNumber && (
-            <Text className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-              Phone: <Text className="font-semibold">{profile.contactNumber}</Text>
-            </Text>
-          )}
-          {typeof profile.age === "number" && (
-            <Text className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-              Age: <Text className="font-semibold">{profile.age}</Text>
-            </Text>
-          )}
-        </View>
-
-        {/* Company / fleet info card */}
-        {profile.companyDetails && (
-          <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-3 shadow-sm">
-            <Text className="text-sm font-semibold text-slate-500 dark:text-slate-300 mb-2">
-              Company
-            </Text>
-            <Text className="text-base text-slate-900 dark:text-slate-50">
-              {profile.companyDetails.companyName}
-            </Text>
-            <Text className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-              GSTIN: {profile.companyDetails.gstin}
-            </Text>
-            <Text className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-              {profile.companyDetails.address}
-            </Text>
-          </View>
-        )}
-
-        {/* Actions card (logout only) */}
-        <View className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm">
-          <TouchableOpacity onPress={handleLogout}>
-            <Text className="text-sm text-red-600 font-semibold">
-              Log out
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </SafeAreaView>
-  );
 }
 </file>
 
@@ -1604,164 +1416,216 @@ const UserLoginScreen: React.FC = () => {
 export default UserLoginScreen;
 </file>
 
-<file path="app/(tabs)/Settings.tsx">
-// app/Settings.tsx
-import React from "react";
+<file path="app/(tabs)/profile.tsx">
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
-  Switch,
-  Appearance,
-  useColorScheme,
+  ActivityIndicator,
   TouchableOpacity,
-  ScrollView,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as SecureStore from "expo-secure-store";
+import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 
-export default function SettingsScreen() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
+const API_BASE_URL = "http://172.27.25.158:3000";
 
-  const toggleTheme = () => {
-    Appearance.setColorScheme(isDark ? "light" : "dark");
+interface UserProfile {
+  name: string;
+  email: string;
+  role: "admin" | "logistic" | "user";
+  contactNumber?: string;
+  age?: number;
+  companyDetails?: {
+    companyName: string;
+    gstin: string;
+    address: string;
   };
+}
+
+// Dummy data for fallback
+const DUMMY_PROFILE: UserProfile = {
+  name: "John Doe",
+  email: "john.doe@example.com",
+  role: "user",
+  contactNumber: "123-456-7890",
+  age: 30,
+  companyDetails: {
+    companyName: "FastFare Logistics",
+    gstin: "GST1234567890",
+    address: "123 Logistics Lane, City, State",
+  },
+};
+
+export default function ProfileScreen() {
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+
+  const fetchProfile = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const token = await SecureStore.getItemAsync("authToken");
+      if (!token) {
+        setError("Not authenticated. Please log in again.");
+        setLoading(false);
+        return;
+      }
+
+      const res = await fetch(`${API_BASE_URL}/api/v1/user/me`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const text = await res.text();
+      console.log("PROFILE STATUS", res.status, "BODY", text);
+
+      if (!res.ok || text.trim() === "") {
+        // Use dummy data if no profile is found
+        setProfile(DUMMY_PROFILE);
+        setLoading(false);
+        return;
+      }
+
+      const data = JSON.parse(text) as { user: UserProfile };
+      setProfile(data.user);
+    } catch (e: any) {
+      // Fallback to dummy data on error
+      setProfile(DUMMY_PROFILE);
+      setError(e.message ?? "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const pickAvatar = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      console.log("Permission to access photos was denied");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.7,
+      allowsEditing: true,
+      aspect: [1, 1],
+    });
+
+    if (!result.canceled && result.assets?.length) {
+      const uri = result.assets[0].uri;
+      setAvatarUri(uri);
+      // TODO: optionally upload avatar to backend here
+    }
+  };
+
+  const handleLogout = async () => {
+    await SecureStore.deleteItemAsync("authToken");
+    router.replace("/(auth)/user-login");
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center bg-slate-100 dark:bg-slate-900">
+        <ActivityIndicator />
+      </SafeAreaView>
+    );
+  }
+
+  // Use profile or dummy data
+  const currentProfile = profile || DUMMY_PROFILE;
+  const driverId = `DRV-${String(currentProfile.email.split("@")[0]).toUpperCase()}`;
 
   return (
     <SafeAreaView className="flex-1 bg-slate-100 dark:bg-slate-900">
-      {/* Header */}
-      <View className="px-4 py-4 flex-row items-center">
-        <TouchableOpacity
-          onPress={() => router.replace("/(tabs)/MyShipments")}
-          className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-700 items-center justify-center mr-3"
-        >
-          <Text className="text-slate-800 dark:text-slate-50 text-lg">←</Text>
-        </TouchableOpacity>
-        <Text className="text-xl font-semibold text-slate-900 dark:text-slate-50">
-          Settings
+      {/* Header gradient-style block */}
+      <View className="px-4 pt-10 pb-6 bg-blue-600 rounded-b-3xl">
+        <View className="flex-row items-center">
+          {/* Avatar circle */}
+          <TouchableOpacity
+            onPress={pickAvatar}
+            className="w-20 h-20 rounded-full bg-white/15 items-center justify-center mr-4 overflow-hidden"
+          >
+            {avatarUri ? (
+              <Image
+                source={{ uri: avatarUri }}
+                style={{ width: 80, height: 80, borderRadius: 40 }}
+              />
+            ) : (
+              <Text className="text-3xl text-white">
+                {currentProfile.name.charAt(0).toUpperCase()}
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          <View className="flex-1">
+            <Text className="text-white text-2xl font-semibold" numberOfLines={1}>
+              {currentProfile.name}
+            </Text>
+            <Text className="text-white/90 text-lg mt-1" numberOfLines={1}>
+              {currentProfile.email}
+            </Text>
+            <Text className="text-white/90 text-lg mt-2">
+              Driver ID: {driverId}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Content cards */}
+      <View className="flex-1 px-4 pt-4">
+        {/* Basic info card */}
+        <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-3 shadow-sm">
+          <Text className="text-lg font-semibold text-slate-500 dark:text-slate-300 mb-2">
+            Basic Info
+          </Text>
+          <Text className="text-lg text-slate-600 dark:text-slate-300">
+            Role: <Text className="font-semibold">{currentProfile.role}</Text>
+          </Text>
+          <Text className="text-lg text-slate-600 dark:text-slate-300 mt-1">
+            Phone: <Text className="font-semibold">{currentProfile.contactNumber || DUMMY_PROFILE.contactNumber}</Text>
+          </Text>
+          <Text className="text-lg text-slate-600 dark:text-slate-300 mt-1">
+            Age: <Text className="font-semibold">{currentProfile.age || DUMMY_PROFILE.age}</Text>
+          </Text>
+        </View>
+
+        {/* Company / fleet info card */}
+        <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-3 shadow-sm">
+        <Text className="text-lg font-semibold text-slate-500 dark:text-slate-300 mb-2">
+          Company
+        </Text>
+        <Text className="text-xl text-slate-900 dark:text-slate-50">
+          {currentProfile.companyDetails?.companyName || DUMMY_PROFILE.companyDetails.companyName}
+        </Text>
+        <Text className="text-lg text-slate-600 dark:text-slate-300 mt-1">
+          GSTIN: {currentProfile.companyDetails?.gstin || DUMMY_PROFILE.companyDetails.gstin}
+        </Text>
+        <Text className="text-lg text-slate-600 dark:text-slate-300 mt-1">
+          {currentProfile.companyDetails?.address || DUMMY_PROFILE.companyDetails.address}
         </Text>
       </View>
 
-      <ScrollView
-        className="flex-1 px-4"
-        contentContainerStyle={{ paddingBottom: 24 }}
-      >
-        {/* Account section */}
-        <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-4 mb-2">
-          Account
-        </Text>
-        <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-4 shadow-sm">
-          <TouchableOpacity className="flex-row justify-between items-center mb-3">
-            <View>
-              <Text className="text-base text-slate-900 dark:text-slate-50">
-                Profile
-              </Text>
-              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                View and edit your information
-              </Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity className="flex-row justify-between items-center">
-            <View>
-              <Text className="text-base text-slate-900 dark:text-slate-50">
-                Notifications
-              </Text>
-              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Manage notification preferences
-              </Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        {/* Appearance section */}
-        <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-2 mb-2">
-          Appearance
-        </Text>
-        <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-4 shadow-sm">
-          <View className="flex-row justify-between items-center">
-            <View>
-              <Text className="text-base text-slate-900 dark:text-slate-50">
-                Dark Mode
-              </Text>
-              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Toggle between light and dark theme
-              </Text>
-            </View>
-            <Switch
-              value={isDark}
-              onValueChange={toggleTheme}
-              thumbColor={isDark ? "#1D4ED8" : "#ffffff"}
-              trackColor={{ false: "#CBD5F5", true: "#2563EB" }}
-            />
-          </View>
-        </View>
-
-        {/* App section */}
-        <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-2 mb-2">
-          App
-        </Text>
-        <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-4 shadow-sm">
-          <TouchableOpacity className="flex-row justify-between items-center mb-3">
-            <View>
-              <Text className="text-base text-slate-900 dark:text-slate-50">
-                Language
-              </Text>
-              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                English (default)
-              </Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity className="flex-row justify-between items-center">
-            <View>
-              <Text className="text-base text-red-600">Log Out</Text>
-              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Sign out of this account
-              </Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        {/* Help & Support section */}
-        <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-2 mb-2">
-          Help & Support
-        </Text>
+        {/* Actions card (logout only) */}
         <View className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm">
-          <TouchableOpacity className="flex-row justify-between items-center mb-3">
-            <View>
-              <Text className="text-base text-slate-900 dark:text-slate-50">
-                Help Center
-              </Text>
-              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                FAQs and app usage tips
-              </Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity className="flex-row justify-between items-center mb-3">
-            <View>
-              <Text className="text-base text-slate-900 dark:text-slate-50">
-                Contact Support
-              </Text>
-              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Chat or email FastFare support
-              </Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity className="flex-row justify-between items-center">
-            <View>
-              <Text className="text-base text-slate-900 dark:text-slate-50">
-                Report an Issue
-              </Text>
-              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Report a problem with a trip or the app
-              </Text>
-            </View>
+          <TouchableOpacity onPress={handleLogout}>
+            <Text className="text-lg text-red-600 font-semibold">
+              Log out
+            </Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -2000,276 +1864,6 @@ const styles = StyleSheet.create({
 });
 </file>
 
-<file path="app/MyShipmentsScreen.tsx">
-import React, { useEffect, useMemo, useState } from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  ActivityIndicator,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
-
-type ShipmentStatus =
-  | "pending"
-  | "booked"
-  | "in-transit"
-  | "delivered"
-  | "cancelled";
-
-interface Shipment {
-  _id: string;
-  shipmentId: string;
-  pickupLocation: {
-    latitude: number;
-    longitude: number;
-  };
-  deliveryLocation: {
-    latitude: number;
-    longitude: number;
-  };
-  quantity: number;
-  status: ShipmentStatus;
-  createdAt: string;
-}
-
-interface MyShipmentsScreenProps {
-  token: string;
-}
-
-const FILTERS: { label: string; value: ShipmentStatus | "all" }[] = [
-  { label: "All", value: "all" },
-  { label: "Pending", value: "pending" },
-  { label: "Booked", value: "booked" },
-  { label: "In-transit", value: "in-transit" },
-  { label: "Delivered", value: "delivered" },
-  { label: "Cancelled", value: "cancelled" },
-];
-
-const MyShipmentsScreen: React.FC<MyShipmentsScreenProps> = ({ token }) => {
-  const [shipments, setShipments] = useState<Shipment[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<ShipmentStatus | "all">("all");
-
-  useEffect(() => {
-    if (!token) {
-      console.log("No token passed to MyShipmentsScreen");
-      setError("No token. Please log in again.");
-      setShipments([]);
-      return;
-    }
-    fetchShipments();
-  }, [token]);
-
-  const fetchShipments = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const res = await fetch(
-        "http://172.27.25.158:3000/api/v1/user/order/list",
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      console.log("using token:", token);
-      console.log("STATUS", res.status);
-      const bodyText = await res.text();
-      console.log("BODY", bodyText);
-
-      if (!res.ok) {
-        setError("Failed to load shipments");
-        setShipments([]);
-        return;
-      }
-
-      const data = JSON.parse(bodyText);
-      const apiShipments: Shipment[] = data.shipments || [];
-      setShipments(apiShipments);
-    } catch (err: any) {
-      setError(err.message ?? "Something went wrong");
-      setShipments([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filteredShipments = useMemo(() => {
-    if (filter === "all") return shipments;
-    return shipments.filter((s) => s.status === filter);
-  }, [shipments, filter]);
-
-  const renderStatusBadge = (status: ShipmentStatus) => {
-    let baseColors = "bg-amber-300 text-slate-800";
-    if (status === "pending") baseColors = "bg-amber-200 text-slate-800";
-    if (status === "in-transit") baseColors = "bg-blue-400 text-white";
-    if (status === "delivered") baseColors = "bg-green-500 text-white";
-    if (status === "cancelled") baseColors = "bg-red-500 text-white";
-
-    return (
-      <View className={`px-2 py-1 rounded-full ${baseColors}`}>
-        <Text className="text-[11px] font-semibold">
-          {status.toUpperCase()}
-        </Text>
-      </View>
-    );
-  };
-
-  const renderShipmentCard = ({ item }: { item: Shipment }) => {
-    const date = new Date(item.createdAt);
-    const timeStr = date.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    return (
-      <View className="bg-white dark:bg-slate-800 rounded-xl p-3 mb-3 shadow-sm">
-        {/* Header */}
-        <View className="flex-row justify-between items-center mb-2">
-          <Text className="font-semibold text-slate-900 dark:text-slate-50">
-            Order #{item.shipmentId}
-          </Text>
-          {renderStatusBadge(item.status)}
-        </View>
-
-        {/* Pickup */}
-        <View className="mt-1">
-          <Text className="text-xs font-semibold text-emerald-500 mb-0.5">
-            Pickup
-          </Text>
-          <Text className="text-xs text-slate-600 dark:text-slate-300">
-            Lat {item.pickupLocation.latitude.toFixed(3)}, Lng{" "}
-            {item.pickupLocation.longitude.toFixed(3)}
-          </Text>
-        </View>
-
-        {/* Drop */}
-        <View className="mt-2">
-          <Text className="text-xs font-semibold text-red-500 mb-0.5">
-            Drop
-          </Text>
-          <Text className="text-xs text-slate-600 dark:text-slate-300">
-            Lat {item.deliveryLocation.latitude.toFixed(3)}, Lng{" "}
-            {item.deliveryLocation.longitude.toFixed(3)}
-          </Text>
-        </View>
-
-        {/* Meta */}
-        <View className="flex-row justify-between mt-3 mb-2">
-          <Text className="text-xs text-slate-500 dark:text-slate-400">
-            {timeStr}
-          </Text>
-          <Text className="text-xs text-slate-500 dark:text-slate-400">
-            {item.quantity} items
-          </Text>
-        </View>
-
-        {/* Button */}
-        <TouchableOpacity
-          className="bg-blue-600 rounded-full py-2 items-center"
-          onPress={() =>
-            router.push({
-              pathname: "/ShipmentDetails",
-              params: { shipmentId: item.shipmentId, token },
-            })
-          }
-        >
-          <Text className="text-white font-semibold text-sm">
-            View Details
-          </Text>
-        </TouchableOpacity>
-      </View>
-    );
-  };
-
-  return (
-    // <SafeAreaView className="flex-1 bg-slate-100 dark:bg-slate-900">
-      <View className="flex-1 bg-slate-100 dark:bg-slate-900">
-        {/* Header */}
-        <View className="pt-12 pb-4 px-4 bg-blue-600 flex-row justify-between items-center">
-          <View>
-            <Text className="text-white text-lg font-bold">
-              FastFare Driver
-            </Text>
-            <Text className="text-white/90 mt-1 text-xs">
-              Driver ID: DRV-1001
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            onPress={fetchShipments}
-            className="w-8 h-8 rounded-full border border-white items-center justify-center"
-          >
-            <Text className="text-white text-base">↻</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Filter chips */}
-        <View className="bg-blue-600 px-4 pb-3 pt-2 flex-row">
-          {FILTERS.map((f) => {
-            const isActive = filter === f.value;
-            return (
-              <TouchableOpacity
-                key={f.value}
-                onPress={() => setFilter(f.value)}
-                className={`px-3 py-1 rounded-full mr-2 ${
-                  isActive ? "bg-white" : "bg-white/20"
-                }`}
-              >
-                <Text
-                  className={`text-xs font-medium ${
-                    isActive ? "text-blue-600" : "text-white"
-                  }`}
-                >
-                  {f.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* List */}
-        <View className="flex-1 px-3 pt-3">
-          <Text className="text-base font-semibold text-slate-900 dark:text-slate-50 mb-2">
-            My Shipments ({filteredShipments.length})
-          </Text>
-
-          {loading && <ActivityIndicator className="mt-4" />}
-
-          {error && !loading && (
-            <Text className="text-red-500 mt-2 text-sm">{error}</Text>
-          )}
-
-          {!loading && !error && (
-            <FlatList
-              data={filteredShipments}
-              keyExtractor={(item) => item._id}
-              renderItem={renderShipmentCard}
-              contentContainerStyle={{ paddingBottom: 16 }}
-              showsVerticalScrollIndicator={false}
-              ListEmptyComponent={
-                <Text className="text-xs text-slate-500 dark:text-slate-400 mt-4">
-                  No shipments found for this account.
-                </Text>
-              }
-            />
-          )}
-        </View>
-      </View>
-    // </SafeAreaView>
-  );
-};
-
-export default MyShipmentsScreen;
-</file>
-
 <file path="app/qr-scan.tsx">
 import React, { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
@@ -2438,6 +2032,490 @@ app-example
 /android
 </file>
 
+<file path="app/(tabs)/Settings.tsx">
+// app/Settings.tsx
+import React from "react";
+import {
+  View,
+  Text,
+  Switch,
+  Appearance,
+  useColorScheme,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
+import * as SecureStore from "expo-secure-store";
+
+export default function SettingsScreen() {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
+
+  const toggleTheme = () => {
+    Appearance.setColorScheme(isDark ? "light" : "dark");
+  };
+
+  const handleLogout = async () => {
+      await SecureStore.deleteItemAsync("authToken");
+      router.replace("/(auth)/user-login");
+    };
+
+  return (
+    <SafeAreaView className="flex-1 bg-slate-100 dark:bg-slate-900">
+      {/* Header */}
+      <View className="px-4 py-4 flex-row items-center">
+        <TouchableOpacity
+          onPress={() => router.replace("/(tabs)/MyShipments")}
+          className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-700 items-center justify-center mr-3"
+        >
+          <Text className="text-slate-800 dark:text-slate-50 text-lg">←</Text>
+        </TouchableOpacity>
+        <Text className="text-xl font-semibold text-slate-900 dark:text-slate-50">
+          Settings
+        </Text>
+      </View>
+
+      <ScrollView
+        className="flex-1 px-4"
+        contentContainerStyle={{ paddingBottom: 24 }}
+      >
+        {/* Account section */}
+        <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-4 mb-2">
+          Account
+        </Text>
+        <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-4 shadow-sm">
+          <TouchableOpacity className="flex-row justify-between items-center mb-3">
+            <View>
+              <Text className="text-base text-slate-900 dark:text-slate-50">
+                Profile
+              </Text>
+              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                View and edit your information
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity className="flex-row justify-between items-center">
+            <View>
+              <Text className="text-base text-slate-900 dark:text-slate-50">
+                Notifications
+              </Text>
+              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Manage notification preferences
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Appearance section */}
+        <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-2 mb-2">
+          Appearance
+        </Text>
+        <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-4 shadow-sm">
+          <View className="flex-row justify-between items-center">
+            <View>
+              <Text className="text-base text-slate-900 dark:text-slate-50">
+                Dark Mode
+              </Text>
+              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Toggle between light and dark theme
+              </Text>
+            </View>
+            <Switch
+              value={isDark}
+              onValueChange={toggleTheme}
+              thumbColor={isDark ? "#1D4ED8" : "#ffffff"}
+              trackColor={{ false: "#CBD5F5", true: "#2563EB" }}
+            />
+          </View>
+        </View>
+
+        {/* App section */}
+        <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-2 mb-2">
+          App
+        </Text>
+        <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-4 shadow-sm">
+          <TouchableOpacity className="flex-row justify-between items-center mb-3">
+            <View>
+              <Text className="text-base text-slate-900 dark:text-slate-50">
+                Language
+              </Text>
+              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                English (default)
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity className="flex-row justify-between items-center">
+            <View>
+              <Text className="text-base text-red-600" onPress={handleLogout}>Log Out</Text>
+              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Sign out of this account
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Help & Support section */}
+        <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-2 mb-2">
+          Help & Support
+        </Text>
+        <View className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm">
+          <TouchableOpacity className="flex-row justify-between items-center mb-3">
+            <View>
+              <Text className="text-base text-slate-900 dark:text-slate-50">
+                Help Center
+              </Text>
+              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                FAQs and app usage tips
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity className="flex-row justify-between items-center mb-3">
+            <View>
+              <Text className="text-base text-slate-900 dark:text-slate-50">
+                Contact Support
+              </Text>
+              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Chat or email FastFare support
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity className="flex-row justify-between items-center">
+            <View>
+              <Text className="text-base text-slate-900 dark:text-slate-50">
+                Report an Issue
+              </Text>
+              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Report a problem with a trip or the app
+              </Text>
+            </View>
+          </TouchableOpacity>
+          {/* <TouchableOpacity onPress={async () => {
+  await SecureStore.deleteItemAsync('authToken');
+  Alert.alert('Token cleared');
+}}>
+  <Text>Clear Token</Text>
+</TouchableOpacity> */}
+
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+</file>
+
+<file path="app/MyShipmentsScreen.tsx">
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
+import * as Location from "expo-location";
+
+type ShipmentStatus =
+  | "pending"
+  | "booked"
+  | "in-transit"
+  | "delivered"
+  | "cancelled";
+
+interface Shipment {
+  _id: string;
+  shipmentId: string;
+  pickupLocation: {
+    latitude: number;
+    longitude: number;
+  };
+  deliveryLocation: {
+    latitude: number;
+    longitude: number;
+  };
+  quantity: number;
+  status: ShipmentStatus;
+  createdAt: string;
+}
+
+interface MyShipmentsScreenProps {
+  token: string;
+}
+
+const FILTERS: { label: string; value: ShipmentStatus | "all" }[] = [
+  { label: "All", value: "all" },
+  { label: "Pending", value: "pending" },
+  { label: "Booked", value: "booked" },
+  { label: "In-transit", value: "in-transit" },
+  { label: "Delivered", value: "delivered" },
+  { label: "Cancelled", value: "cancelled" },
+];
+
+async function coordsToAddressString(lat: number, lng: number) {
+  try {
+    const res = await Location.reverseGeocodeAsync({
+      latitude: lat,
+      longitude: lng,
+    });
+    if (!res.length) return "";
+    const addr = res[0];
+    return [
+      addr.name,
+      addr.street,
+      addr.city,
+      addr.region,
+      addr.postalCode,
+      addr.country,
+    ]
+      .filter(Boolean)
+      .join(", ");
+  } catch (e) {
+    console.log("reverseGeocode error", e);
+    return "";
+  }
+}
+
+const MyShipmentsScreen: React.FC<MyShipmentsScreenProps> = ({ token }) => {
+  const [shipments, setShipments] = useState<Shipment[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<ShipmentStatus | "all">("all");
+  const [addressMap, setAddressMap] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!token) {
+      console.log("No token passed to MyShipmentsScreen");
+      setError("No token. Please log in again.");
+      setShipments([]);
+      return;
+    }
+    fetchShipments();
+  }, [token]);
+
+  const fetchShipments = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const res = await fetch(
+        "http://172.27.25.158:3000/api/v1/user/order/list",
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      console.log("using token:", token);
+      console.log("STATUS", res.status);
+      const bodyText = await res.text();
+      console.log("BODY", bodyText);
+
+      if (!res.ok) {
+        setError("Failed to load shipments");
+        setShipments([]);
+        return;
+      }
+
+      const data = JSON.parse(bodyText);
+      const apiShipments: Shipment[] = data.shipments || [];
+      setShipments(apiShipments);
+
+      // Resolve addresses for each shipment
+      const newAddressMap = { ...addressMap };
+      for (const s of apiShipments) {
+        const pickupAddr = await coordsToAddressString(
+          s.pickupLocation.latitude,
+          s.pickupLocation.longitude
+        );
+        const dropAddr = await coordsToAddressString(
+          s.deliveryLocation.latitude,
+          s.deliveryLocation.longitude
+        );
+        newAddressMap[s._id] = `${pickupAddr} → ${dropAddr}`;
+      }
+      setAddressMap(newAddressMap);
+    } catch (err: any) {
+      setError(err.message ?? "Something went wrong");
+      setShipments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredShipments = useMemo(() => {
+    if (filter === "all") return shipments;
+    return shipments.filter((s) => s.status === filter);
+  }, [shipments, filter]);
+
+  const renderStatusBadge = (status: ShipmentStatus) => {
+    let baseColors = "bg-amber-300 text-slate-800";
+    if (status === "pending") baseColors = "bg-amber-200 text-slate-800";
+    if (status === "in-transit") baseColors = "bg-blue-400 text-white";
+    if (status === "delivered") baseColors = "bg-green-500 text-white";
+    if (status === "cancelled") baseColors = "bg-red-500 text-white";
+
+    return (
+      <View className={`px-2 py-1 rounded-full ${baseColors}`}>
+        <Text className="text-[11px] font-semibold">
+          {status.toUpperCase()}
+        </Text>
+      </View>
+    );
+  };
+
+  const renderShipmentCard = ({ item }: { item: Shipment }) => {
+    const date = new Date(item.createdAt);
+    const timeStr = date.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const address = addressMap[item._id] || "Loading address...";
+
+    return (
+      <View className="bg-white dark:bg-slate-800 rounded-xl p-3 mb-3 shadow-sm">
+        {/* Header */}
+        <View className="flex-row justify-between items-center mb-2">
+          <Text className="font-semibold text-slate-900 dark:text-slate-50">
+            Order #{item.shipmentId}
+          </Text>
+          {renderStatusBadge(item.status)}
+        </View>
+
+        {/* Pickup and Drop Address */}
+        <View className="mt-1">
+          <Text className="text-xs font-semibold text-emerald-500 mb-0.5">
+            Pickup
+          </Text>
+          <Text className="text-xs text-slate-600 dark:text-slate-300">
+            {address.split(" → ")[0]}
+          </Text>
+        </View>
+
+        <View className="mt-2">
+          <Text className="text-xs font-semibold text-red-500 mb-0.5">
+            Drop
+          </Text>
+          <Text className="text-xs text-slate-600 dark:text-slate-300">
+            {address.split(" → ")[1]}
+          </Text>
+        </View>
+
+        {/* Meta */}
+        <View className="flex-row justify-between mt-3 mb-2">
+          <Text className="text-xs text-slate-500 dark:text-slate-400">
+            {timeStr}
+          </Text>
+          <Text className="text-xs text-slate-500 dark:text-slate-400">
+            {item.quantity} items
+          </Text>
+        </View>
+
+        {/* Button */}
+        <TouchableOpacity
+          className="bg-blue-600 rounded-full py-2 items-center"
+          onPress={() =>
+            router.push({
+              pathname: "/ShipmentDetails",
+              params: { shipmentId: item.shipmentId, token },
+            })
+          }
+        >
+          <Text className="text-white font-semibold text-sm">
+            View Details
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  return (
+    <View className="flex-1 bg-slate-100 dark:bg-slate-900">
+      {/* Header */}
+      <View className="pt-12 pb-4 px-4 bg-blue-600 flex-row justify-between items-center">
+        <View>
+          <Text className="text-white text-lg font-bold">
+            FastFare Driver
+          </Text>
+          <Text className="text-white/90 mt-1 text-xs">
+            Driver ID: DRV-1001
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          onPress={fetchShipments}
+          className="w-8 h-8 rounded-full border border-white items-center justify-center"
+        >
+          <Text className="text-white text-base">↻</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Filter chips */}
+      <View className="bg-blue-600 px-4 pb-3 pt-2 flex-row">
+        {FILTERS.map((f) => {
+          const isActive = filter === f.value;
+          return (
+            <TouchableOpacity
+              key={f.value}
+              onPress={() => setFilter(f.value)}
+              className={`px-3 py-1 rounded-full mr-2 ${
+                isActive ? "bg-white" : "bg-white/20"
+              }`}
+            >
+              <Text
+                className={`text-xs font-medium ${
+                  isActive ? "text-blue-600" : "text-white"
+                }`}
+              >
+                {f.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* List */}
+      <View className="flex-1 px-3 pt-3">
+        <Text className="text-base font-semibold text-slate-900 dark:text-slate-50 mb-2">
+          My Shipments ({filteredShipments.length})
+        </Text>
+
+        {loading && <ActivityIndicator className="mt-4" />}
+
+        {error && !loading && (
+          <Text className="text-red-500 mt-2 text-sm">{error}</Text>
+        )}
+
+        {!loading && !error && (
+          <FlatList
+            data={filteredShipments}
+            keyExtractor={(item) => item._id}
+            renderItem={renderShipmentCard}
+            contentContainerStyle={{ paddingBottom: 16 }}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-4">
+                No shipments found for this account.
+              </Text>
+            }
+          />
+        )}
+      </View>
+    </View>
+  );
+};
+
+export default MyShipmentsScreen;
+</file>
+
 <file path="app/_layout.tsx">
 // app/_layout.tsx
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
@@ -2456,8 +2534,13 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
+
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="ShipmentDetails" options={{headerShown: false}} />
+        <Stack.Screen name="qr-scan" options={{headerShown: false}} />
+        <Stack.Screen name="MapScreen" options={{headerShown: false}} />
+
         {/* <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} /> */}
       </Stack>
       <StatusBar style="auto" />
@@ -2469,46 +2552,47 @@ export default function RootLayout() {
 <file path="app/(tabs)/_layout.tsx">
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { Text } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export const unstable_settings = {
   initialRouteName: 'MyShipments',
-}
+};
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
 
   return (
     <Tabs
-      initialRouteName='MyShipments'
+      initialRouteName="MyShipments"
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
         tabBarButton: HapticTab,
-      }}>
+      }}
+    >
       <Tabs.Screen
         name="MyShipments"
         options={{
           title: 'My Shipments',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="shippingbox.fill" color={color} />,
+          tabBarIcon: ({ color }) => <Text style={{ color }}>📦</Text>,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.crop.circle" color={color} />,
+          tabBarIcon: ({ color }) => <Text style={{ color }}>👤</Text>,
         }}
       />
       <Tabs.Screen
         name="Settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="gearshape.fill" color={color} />,
+          tabBarIcon: ({ color }) => <Text style={{ color }}>⚙️</Text>,
         }}
       />
     </Tabs>
