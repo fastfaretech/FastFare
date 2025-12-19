@@ -117,10 +117,10 @@ async function seed() {
     // =====================
     // 📦 SHIPMENTS
     // =====================
-    const statuses = ["pending", "confirmed", "in-transit", "delivered", "cancelled"];
     const shipments = [];
 
-    for (const status of statuses) {
+    // Create 3 pending shipments
+    for (let i = 0; i < 3; i++) {
       const shipment = new Shipment({
         shipmentId: `FFR-${nanoid(5)}`,
         userId: user1._id,
@@ -147,15 +147,153 @@ async function seed() {
         weight: 50,
         netWeight: 48,
         price: 1500,
-        status: status,
+        status: "pending",
         pickupQrToken: `PCK-${nanoid(5)}`,
         deliveryQrToken: `DEL-${nanoid(5)}`
       });
+      shipments.push(shipment);
+    }
 
-      if (status !== "pending") {
-        shipment.DriverId = driverUser._id;
-      }
+    // Create 2 in-transit shipments
+    for (let i = 0; i < 2; i++) {
+      const shipment = new Shipment({
+        shipmentId: `FFR-${nanoid(5)}`,
+        userId: user1._id,
+        pickupDetails: {
+          longitude: 77.2090,
+          latitude: 28.6139,
+          email: "pickup@fastfare.com",
+          address: "Delhi",
+          contactNumber: 9999999999
+        },
+        deliveryDetails: {
+          longitude: 72.8777,
+          latitude: 19.0760,
+          email: "delivery@fastfare.com",
+          address: "Mumbai",
+          contactNumber: 8888888888
+        },
+        size: {
+          length: 10,
+          width: 5,
+          height: 4
+        },
+        quantity: 2,
+        weight: 50,
+        netWeight: 48,
+        price: 1500,
+        status: "in-transit",
+        pickupQrToken: `PCK-${nanoid(5)}`,
+        deliveryQrToken: `DEL-${nanoid(5)}`
+      });
+      shipment.DriverId = driverUser._id;
+      shipments.push(shipment);
+    }
 
+    // Create 3 delivered shipments
+    for (let i = 0; i < 3; i++) {
+      const shipment = new Shipment({
+        shipmentId: `FFR-${nanoid(5)}`,
+        userId: user1._id,
+        pickupDetails: {
+          longitude: 77.2090,
+          latitude: 28.6139,
+          email: "pickup@fastfare.com",
+          address: "Delhi",
+          contactNumber: 9999999999
+        },
+        deliveryDetails: {
+          longitude: 72.8777,
+          latitude: 19.0760,
+          email: "delivery@fastfare.com",
+          address: "Mumbai",
+          contactNumber: 8888888888
+        },
+        size: {
+          length: 10,
+          width: 5,
+          height: 4
+        },
+        quantity: 2,
+        weight: 50,
+        netWeight: 48,
+        price: 1500,
+        status: "delivered",
+        pickupQrToken: `PCK-${nanoid(5)}`,
+        deliveryQrToken: `DEL-${nanoid(5)}`
+      });
+      shipment.DriverId = driverUser._id;
+      shipments.push(shipment);
+    }
+
+    // Create 2 cancelled shipments
+    for (let i = 0; i < 2; i++) {
+      const shipment = new Shipment({
+        shipmentId: `FFR-${nanoid(5)}`,
+        userId: user1._id,
+        pickupDetails: {
+          longitude: 77.2090,
+          latitude: 28.6139,
+          email: "pickup@fastfare.com",
+          address: "Delhi",
+          contactNumber: 9999999999
+        },
+        deliveryDetails: {
+          longitude: 72.8777,
+          latitude: 19.0760,
+          email: "delivery@fastfare.com",
+          address: "Mumbai",
+          contactNumber: 8888888888
+        },
+        size: {
+          length: 10,
+          width: 5,
+          height: 4
+        },
+        quantity: 2,
+        weight: 50,
+        netWeight: 48,
+        price: 1500,
+        status: "cancelled",
+        pickupQrToken: `PCK-${nanoid(5)}`,
+        deliveryQrToken: `DEL-${nanoid(5)}`
+      });
+      shipments.push(shipment);
+    }
+
+    // Create 4 confirmed shipments
+    for (let i = 0; i < 4; i++) {
+      const shipment = new Shipment({
+        shipmentId: `FFR-${nanoid(5)}`,
+        userId: user1._id,
+        pickupDetails: {
+          longitude: 77.2090,
+          latitude: 28.6139,
+          email: "pickup@fastfare.com",
+          address: "Delhi",
+          contactNumber: 9999999999
+        },
+        deliveryDetails: {
+          longitude: 72.8777,
+          latitude: 19.0760,
+          email: "delivery@fastfare.com",
+          address: "Mumbai",
+          contactNumber: 8888888888
+        },
+        size: {
+          length: 10,
+          width: 5,
+          height: 4
+        },
+        quantity: 2,
+        weight: 50,
+        netWeight: 48,
+        price: 1500,
+        status: "confirmed",
+        pickupQrToken: `PCK-${nanoid(5)}`,
+        deliveryQrToken: `DEL-${nanoid(5)}`
+      });
+      shipment.DriverId = driverUser._id;
       shipments.push(shipment);
     }
 

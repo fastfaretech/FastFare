@@ -222,136 +222,138 @@ export async function AdminRegister(req: Request, res: Response){
 
 <file path="src/controllers/authController.ts">
 import { Request, Response } from "express";
-import bcrypt from "bcrypt"
+import bcrypt from "bcrypt";
 import { sign, verify } from "jsonwebtoken";
-
-import { config } from "../utils/envConfig"
+import { config } from "../utils/envConfig";
 import User from "../models/userModel";
-import { UserDetails, AdminDetails, LogisticDetails } from "../models/detailsModel";
+import { UserDetails, AdminDetails, LogisticDetails, DriverDetails } from "../models/detailsModel";
 
 const JWT_SECRET = config.JWT_SECRET;
 
 interface Ilogin {
-    email:string,
-    password:string
-}
-export async function Login(req:Request, res:Response){
-    try{
-        const {email, password}: Ilogin = req.body
-        if(!email || !password){
-            console.log("All fields are Required!")
-            return res.status(400).json({message:"All fields are Required!"})
-        }
-
-        const user = await User.findOne({email:email})
-        if(!user){
-            console.log("Error:User does not exist!")
-            return res.status(401).json({message:"Invalid Email or Password!"})
-        }
-        
-        const passwordMatch = await bcrypt.compare(password, user.pwdhash)
-        if(!passwordMatch){const JWT_SECRET = config.JWT_SECRET;
-            console.log("Invalid Credentials!")
-            return res.status(401).json({message:"Invalid Email or Password!"})
-        }
-
-        const token = sign({id:user._id, email:user.email, role:user.role},JWT_SECRET,{expiresIn: "1h"})
-        console.log("User Logged In Successfully!")
-        return res.status(200).json({
-            message:"User Logged In Successfully!",
-             token 
-        });
-    }catch(error){
-        console.log("Error:Internal Server Error!", error)
-        return res.status(500).json({
-            message:"Internal Server Error!",
-            error
-        })
-    }
+  email: string;
+  password: string;
 }
 
-export async function fetchUserDetail(req: Request, res: Response){
-    try{
-        if (!req.user) {
-            return res.status(401).json({ message: "Unauthorized!" });
-        }
-        const data = req.user as any;
-
-        const Role = data.role;
-        console.log("Fetching details for user:", data.id, "with role:", Role);
-        const user = await User.findById(data.id).select("-pwdhash -__v")
-        if(!user){
-            console.log("User Not Found!") 
-            return res.status(404).json({
-                message:"User Not Found!"
-            })
-        }
-        
-        var details: any = null;
-        if(Role == "admin"){
-            details = await AdminDetails.findOne({userId: user._id}).select("-__v -userId");
-        }else if(Role == "logistic"){
-            details = await LogisticDetails.findOne({userId: user._id}).select("-__v -userId");
-        }else if (Role == "user"){
-            details = await UserDetails.findOne({userId: user._id}).select("-__v -userId");
-        }else{
-            console.log("Invalid User Role!")
-            return res.status(400).json({
-                message:"Invalid User Role!"
-            })
-        }
-
-        console.log("User Details Fetched Successfully!")
-        return res.status(200).json({
-            message:"User Details Fetched Successfully!",
-            user:user,
-            details:details
-        })
-    }catch(error){
-        console.log("Error:Internal Server Error!", error)
-        return res.status(500).json({
-            message:"Internal Server Error!"
-        })
+export async function Login(req: Request, res: Response) {
+  try {
+    const { email, password }: Ilogin = req.body;
+    if (!email || !password) {
+      console.log("All fields are Required!");
+      return res.status(400).json({ message: "All fields are Required!" });
     }
-}
-        
 
-     
-
-
-// Nishant's code
-export async function getMe(req: Request, res: Response) {
-    try {
-      const userDoc = req.user;
-      if (!userDoc) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-  
-      const userId = userDoc._id;
-  
-      let details: any = {};
-      if (userDoc.role === "admin") {
-        details = await AdminDetails.findOne({ userId }).select("-__v -userId");
-      } else if (userDoc.role === "logistic") {
-        details = await LogisticDetails.findOne({ userId }).select("-__v -userId");
-      } else if (userDoc.role === "user") {
-        details = await UserDetails.findOne({ userId }).select("-__v -userId");
-      }
-  
-      console.log("Current user fetched successfully!");
-      return res.status(200).json({
-        message: "Current user fetched successfully!",
-        user: userDoc,
-        details,
-      });
-    } catch (error) {
-      console.log("Error:Internal Server Error!", error);
-      return res.status(500).json({
-        message: "Internal Server Error!",
-        error,
-      });
+    const user = await User.findOne({ email: email });
+    if (!user) {
+      console.log("Error:User does not exist!");
+      return res.status(401).json({ message: "Invalid Email or Password!" });
     }
+
+    const passwordMatch = await bcrypt.compare(password, user.pwdhash);
+    if (!passwordMatch) {
+      console.log("Invalid Credentials!");
+      return res.status(401).json({ message: "Invalid Email or Password!" });
+    }
+
+    const token = sign({ id: user._id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: "1h" });
+    console.log("User Logged In Successfully!");
+    return res.status(200).json({
+      message: "User Logged In Successfully!",
+      token,
+    });
+  } catch (error) {
+    console.log("Error:Internal Server Error!", error);
+    return res.status(500).json({
+      message: "Internal Server Error!",
+      error,
+    });
   }
+}
+
+export async function fetchUserDetail(req: Request, res: Response) {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized!" });
+    }
+    const data = req.user as any;
+
+    const Role = data.role;
+    console.log("Fetching details for user:", data.id, "with role:", Role);
+    const user = await User.findById(data.id).select("-pwdhash -__v");
+    if (!user) {
+      console.log("User Not Found!");
+      return res.status(404).json({
+        message: "User Not Found!",
+      });
+    }
+
+    var details: any = null;
+    if (Role === "admin") {
+      details = await AdminDetails.findOne({ userId: user._id }).select("-__v -userId");
+    } else if (Role === "logistic") {
+      details = await LogisticDetails.findOne({ userId: user._id }).select("-__v -userId");
+    } else if (Role === "user") {
+      details = await UserDetails.findOne({ userId: user._id }).select("-__v -userId");
+    } else if (Role === "driver") {
+      details = await DriverDetails.findOne({ userId: user._id }).select("-__v -userId");
+    } else {
+      console.log("Invalid User Role!");
+      return res.status(400).json({
+        message: "Invalid User Role!",
+      });
+    }
+
+    console.log("User Details Fetched Successfully!");
+    return res.status(200).json({
+      message: "User Details Fetched Successfully!",
+      user: user,
+      details: details,
+    });
+  } catch (error) {
+    console.log("Error:Internal Server Error!", error);
+    return res.status(500).json({
+      message: "Internal Server Error!",
+    });
+  }
+}
+
+
+
+//nishant
+export async function getMe(req: Request, res: Response) {
+  try {
+    const userDoc = req.user;
+    if (!userDoc) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const userId = userDoc._id;
+
+    let details: any = {};
+    if (userDoc.role === "admin") {
+      details = await AdminDetails.findOne({ userId }).select("-__v -userId");
+    } else if (userDoc.role === "logistic") {
+      details = await LogisticDetails.findOne({ userId }).select("-__v -userId");
+    } else if (userDoc.role === "user") {
+      details = await UserDetails.findOne({ userId }).select("-__v -userId");
+    } else if (userDoc.role === "driver") {
+      details = await DriverDetails.findOne({ userId }).select("-__v -userId");
+    }
+
+    console.log("Current user fetched successfully!");
+    return res.status(200).json({
+      message: "Current user fetched successfully!",
+      user: userDoc,
+      details,
+    });
+  } catch (error) {
+    console.log("Error:Internal Server Error!", error);
+    return res.status(500).json({
+      message: "Internal Server Error!",
+      error,
+    });
+  }
+}
 </file>
 
 <file path="src/controllers/logistics/authController.ts">
@@ -1064,32 +1066,39 @@ export async function BookShipments(req: Request, res: Response) {
 
 
 export async function GetShipments(req: Request, res: Response) {
-    try{
-        const user = req.user;
-        const {shipmentId} = req.params;
-        if (!shipmentId) {
-            console.log("Shipment ID is required!");
-            return res.status(400).json({ message: "Shipment ID is required!" });
-        }
-        const shipment = await Shipment.findOne({shipmentId, userId: user?._id});
-        if(!shipment){
-            console.log("Shipment not found!");
-            return res.status(404).json({ message: "Shipment not found!" });
-        }
-        
-        return res.status(200).json({
-            message: "Shipment fetched!",
-            shipment: shipment 
-        });
-        
-    }catch(error){
-        console.log("Error:Internal Server Error!", error)
-        return res.status(500).json({
-            message:"Internal Server Error!",
-            error
-        })
+    try {
+      const user = req.user;
+      const { shipmentId } = req.params;
+      if (!shipmentId) {
+        console.log("Shipment ID is required!");
+        return res.status(400).json({ message: "Shipment ID is required!" });
+      }
+  
+      let shipment;
+      if (user.role === "driver") {
+        shipment = await Shipment.findOne({ shipmentId, DriverId: user._id });
+      } else {
+        shipment = await Shipment.findOne({ shipmentId, userId: user._id });
+      }
+  
+      if (!shipment) {
+        console.log("Shipment not found!");
+        return res.status(404).json({ message: "Shipment not found!" });
+      }
+  
+      return res.status(200).json({
+        message: "Shipment fetched!",
+        shipment: shipment
+      });
+    } catch (error) {
+      console.log("Error:Internal Server Error!", error);
+      return res.status(500).json({
+        message: "Internal Server Error!",
+        error
+      });
     }
-}
+  }
+  
 
 
 // nishant change for testing
@@ -1101,15 +1110,14 @@ export async function ListShipments(req: Request, res: Response) {
         return res.status(401).json({ message: "Unauthorized" });
       }
   
-      const shipments = await Shipment.find({ userId: user._id })
-        .sort({ createdAt: -1 });
+      let shipments;
+      if (user.role === "driver") {
+        shipments = await Shipment.find({ DriverId: user._id }).sort({ createdAt: -1 });
+      } else {
+        shipments = await Shipment.find({ userId: user._id }).sort({ createdAt: -1 });
+      }
   
-      console.log(
-        "ListShipments for user:",
-        user._id,
-        "count:",
-        shipments.length
-      );
+      console.log("ListShipments for user:", user._id, "count:", shipments.length);
   
       return res.status(200).json({ shipments });
     } catch (error) {
@@ -1536,7 +1544,7 @@ const userSchema = new mongoose.Schema({
     role:{
         type:String,
         required:true,
-        enum:["user","admin","logistic"],
+        enum:["user","admin","logistic","driver"],
         default:"user"
     },
     createdAt:{
@@ -1583,7 +1591,7 @@ router.use('/logistic', logisticRoutes)
 router.use('/user', shipment)
 
 router.use('/login', Login)
-router.use('/fetchdetail', Authenticate, Authorize(["user", "admin", "logistic"]), fetchUserDetail)
+router.use('/fetchdetail', Authenticate, Authorize(["user", "admin", "logistic", "driver"]), fetchUserDetail)
 export default router;
 </file>
 
@@ -1602,7 +1610,7 @@ router.post('/register', LogisticRegister)
 router.patch('/update/:id', Authenticate, Authorize(["logistic"]), UpdateUser)
 router.post('/driver/add', Authenticate, Authorize(["logistic"]), addDriver)
 router.get('/driver/getall', Authenticate, Authorize(["logistic"]), getDrivers)
-router.post('/shipment/confirm', Authenticate, Authorize(["logistic"]), confirmShipment)
+router.post('/shipment/confirm', Authenticate, Authorize(["logistic", "driver"]), confirmShipment)
 router.post('/shipment/scan', Authenticate, Authorize(["driver"]), scanShipment)
 
 router.post('/driver/location/set', Authenticate, setLocation)
@@ -1623,7 +1631,7 @@ const router = Router()
 
 router.post('/register', UserRegister)
 router.post("/login", Login);
-router.get("/me", Authenticate, Authorize(["user", "admin", "logistic"]), getMe);
+router.get("/me", Authenticate, Authorize(["user", "admin", "logistic", "driver"]), getMe);
 router.patch('/update/:id', Authenticate, Authorize(["user"]), UpdateUser)
 export default router
 </file>
@@ -1638,9 +1646,11 @@ import { BookShipments, GetShipments, ListShipments } from "../../controllers/us
 const router = Router()
 
 router.post('/order/book', Authenticate, Authorize(["user"]), BookShipments)
-router.get('/order/get/:shipmentId', Authenticate, Authorize(["user"]), GetShipments)
+router.get('/order/get/:shipmentId', Authenticate, Authorize(["user", "driver"]), GetShipments)
+
+
 // nishant change for testing
-router.get("/order/list", Authenticate, Authorize(["user"]), ListShipments);
+router.get("/order/list", Authenticate, Authorize(["user","driver"]), ListShipments);
 
 export default router
 </file>
@@ -1652,7 +1662,7 @@ import { nanoid } from "nanoid";
 
 import { config } from "./utils/envConfig";
 import User from "./models/userModel";
-import { AdminDetails, LogisticDetails, UserDetails } from "./models/detailsModel";
+import { AdminDetails, LogisticDetails, UserDetails, DriverDetails } from "./models/detailsModel";
 import { Shipment } from "./models/shipmentModel";
 
 async function seed() {
@@ -1668,6 +1678,7 @@ async function seed() {
       AdminDetails.deleteMany({}),
       LogisticDetails.deleteMany({}),
       UserDetails.deleteMany({}),
+      DriverDetails.deleteMany({}),
       Shipment.deleteMany({})
     ]);
 
@@ -1676,7 +1687,6 @@ async function seed() {
     // =====================
     // 👤 USERS
     // =====================
-
     const admin = await User.create({
       name: "Admin One",
       email: "admin@fastfare.com",
@@ -1708,7 +1718,6 @@ async function seed() {
     // =====================
     // 📄 DETAILS
     // =====================
-
     await AdminDetails.create({
       userId: admin._id,
       name: "Admin One",
@@ -1721,14 +1730,7 @@ async function seed() {
       name: "Logistic One",
       companyName: "Fast Logistics Pvt Ltd",
       gstin: "27ABCDE1234F1Z5",
-      address: "Mumbai, Maharashtra",
-      drivers: [
-        {
-          name: "Driver One",
-          licenseNumber: "MH12DL1234",
-          contactNumber: 9876543210
-        }
-      ]
+      address: "Mumbai, Maharashtra"
     });
 
     await UserDetails.create({
@@ -1749,20 +1751,50 @@ async function seed() {
     });
 
     // =====================
+    // 🚛 DRIVERS
+    // =====================
+    const driverUser = await User.create({
+      name: "Driver One",
+      email: "driver@fastfare.com",
+      pwdhash,
+      role: "driver"
+    });
+
+    await DriverDetails.create({
+      userId: driverUser._id,
+      logisticClientId: logistic._id,
+      name: "Driver One",
+      email: "driver@fastfare.com",
+      contactNumber: 9876543210,
+      licenseNumber: "MH12DL1234",
+      vehicleNumber: "MH12AB1234",
+      chasisNo: "CHASIS1234",
+      status: "available"
+    });
+
+    // =====================
     // 📦 SHIPMENTS
     // =====================
+    const shipments = [];
 
-    await Shipment.create([
-      {
+    // Create 3 pending shipments
+    for (let i = 0; i < 3; i++) {
+      const shipment = new Shipment({
         shipmentId: `FFR-${nanoid(5)}`,
         userId: user1._id,
-        pickupLocation: {
+        pickupDetails: {
+          longitude: 77.2090,
           latitude: 28.6139,
-          longitude: 77.2090
+          email: "pickup@fastfare.com",
+          address: "Delhi",
+          contactNumber: 9999999999
         },
-        deliveryLocation: {
+        deliveryDetails: {
+          longitude: 72.8777,
           latitude: 19.0760,
-          longitude: 72.8777
+          email: "delivery@fastfare.com",
+          address: "Mumbai",
+          contactNumber: 8888888888
         },
         size: {
           length: 10,
@@ -1773,31 +1805,157 @@ async function seed() {
         weight: 50,
         netWeight: 48,
         price: 1500,
-        status: "booked"
-      },
-      {
+        status: "pending",
+        pickupQrToken: `PCK-${nanoid(5)}`,
+        deliveryQrToken: `DEL-${nanoid(5)}`
+      });
+      shipments.push(shipment);
+    }
+
+    // Create 2 in-transit shipments
+    for (let i = 0; i < 2; i++) {
+      const shipment = new Shipment({
         shipmentId: `FFR-${nanoid(5)}`,
         userId: user1._id,
-        pickupLocation: {
-          latitude: 12.9716,
-          longitude: 77.5946
+        pickupDetails: {
+          longitude: 77.2090,
+          latitude: 28.6139,
+          email: "pickup@fastfare.com",
+          address: "Delhi",
+          contactNumber: 9999999999
         },
-        deliveryLocation: {
-          latitude: 13.0827,
-          longitude: 80.2707
+        deliveryDetails: {
+          longitude: 72.8777,
+          latitude: 19.0760,
+          email: "delivery@fastfare.com",
+          address: "Mumbai",
+          contactNumber: 8888888888
         },
         size: {
-          length: 6,
-          width: 4,
-          height: 3
+          length: 10,
+          width: 5,
+          height: 4
         },
-        quantity: 1,
-        weight: 20,
-        netWeight: 18,
-        price: 800,
-        status: "in-transit"
-      }
-    ]);
+        quantity: 2,
+        weight: 50,
+        netWeight: 48,
+        price: 1500,
+        status: "in-transit",
+        pickupQrToken: `PCK-${nanoid(5)}`,
+        deliveryQrToken: `DEL-${nanoid(5)}`
+      });
+      shipment.DriverId = driverUser._id;
+      shipments.push(shipment);
+    }
+
+    // Create 3 delivered shipments
+    for (let i = 0; i < 3; i++) {
+      const shipment = new Shipment({
+        shipmentId: `FFR-${nanoid(5)}`,
+        userId: user1._id,
+        pickupDetails: {
+          longitude: 77.2090,
+          latitude: 28.6139,
+          email: "pickup@fastfare.com",
+          address: "Delhi",
+          contactNumber: 9999999999
+        },
+        deliveryDetails: {
+          longitude: 72.8777,
+          latitude: 19.0760,
+          email: "delivery@fastfare.com",
+          address: "Mumbai",
+          contactNumber: 8888888888
+        },
+        size: {
+          length: 10,
+          width: 5,
+          height: 4
+        },
+        quantity: 2,
+        weight: 50,
+        netWeight: 48,
+        price: 1500,
+        status: "delivered",
+        pickupQrToken: `PCK-${nanoid(5)}`,
+        deliveryQrToken: `DEL-${nanoid(5)}`
+      });
+      shipment.DriverId = driverUser._id;
+      shipments.push(shipment);
+    }
+
+    // Create 2 cancelled shipments
+    for (let i = 0; i < 2; i++) {
+      const shipment = new Shipment({
+        shipmentId: `FFR-${nanoid(5)}`,
+        userId: user1._id,
+        pickupDetails: {
+          longitude: 77.2090,
+          latitude: 28.6139,
+          email: "pickup@fastfare.com",
+          address: "Delhi",
+          contactNumber: 9999999999
+        },
+        deliveryDetails: {
+          longitude: 72.8777,
+          latitude: 19.0760,
+          email: "delivery@fastfare.com",
+          address: "Mumbai",
+          contactNumber: 8888888888
+        },
+        size: {
+          length: 10,
+          width: 5,
+          height: 4
+        },
+        quantity: 2,
+        weight: 50,
+        netWeight: 48,
+        price: 1500,
+        status: "cancelled",
+        pickupQrToken: `PCK-${nanoid(5)}`,
+        deliveryQrToken: `DEL-${nanoid(5)}`
+      });
+      shipments.push(shipment);
+    }
+
+    // Create 4 confirmed shipments
+    for (let i = 0; i < 4; i++) {
+      const shipment = new Shipment({
+        shipmentId: `FFR-${nanoid(5)}`,
+        userId: user1._id,
+        pickupDetails: {
+          longitude: 77.2090,
+          latitude: 28.6139,
+          email: "pickup@fastfare.com",
+          address: "Delhi",
+          contactNumber: 9999999999
+        },
+        deliveryDetails: {
+          longitude: 72.8777,
+          latitude: 19.0760,
+          email: "delivery@fastfare.com",
+          address: "Mumbai",
+          contactNumber: 8888888888
+        },
+        size: {
+          length: 10,
+          width: 5,
+          height: 4
+        },
+        quantity: 2,
+        weight: 50,
+        netWeight: 48,
+        price: 1500,
+        status: "confirmed",
+        pickupQrToken: `PCK-${nanoid(5)}`,
+        deliveryQrToken: `DEL-${nanoid(5)}`
+      });
+      shipment.DriverId = driverUser._id;
+      shipments.push(shipment);
+    }
+
+    await Shipment.insertMany(shipments);
 
     console.log("✅ Database seeded successfully!");
     process.exit(0);
