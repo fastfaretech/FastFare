@@ -4,7 +4,7 @@ import { nanoid } from "nanoid";
 
 import { config } from "./utils/envConfig";
 import User from "./models/userModel";
-import { AdminDetails, LogisticDetails, UserDetails } from "./models/detailsModel";
+import { AdminDetails, LogisticDetails, UserDetails, DriverDetails } from "./models/detailsModel";
 import { Shipment } from "./models/shipmentModel";
 
 async function seed() {
@@ -20,6 +20,7 @@ async function seed() {
       AdminDetails.deleteMany({}),
       LogisticDetails.deleteMany({}),
       UserDetails.deleteMany({}),
+      DriverDetails.deleteMany({}),
       Shipment.deleteMany({})
     ]);
 
@@ -28,7 +29,6 @@ async function seed() {
     // =====================
     // 👤 USERS
     // =====================
-
     const admin = await User.create({
       name: "Admin One",
       email: "admin@fastfare.com",
@@ -60,7 +60,6 @@ async function seed() {
     // =====================
     // 📄 DETAILS
     // =====================
-
     await AdminDetails.create({
       userId: admin._id,
       name: "Admin One",
@@ -73,14 +72,7 @@ async function seed() {
       name: "Logistic One",
       companyName: "Fast Logistics Pvt Ltd",
       gstin: "27ABCDE1234F1Z5",
-      address: "Mumbai, Maharashtra",
-      drivers: [
-        {
-          name: "Driver One",
-          licenseNumber: "MH12DL1234",
-          contactNumber: 9876543210
-        }
-      ]
+      address: "Mumbai, Maharashtra"
     });
 
     await UserDetails.create({
@@ -101,20 +93,50 @@ async function seed() {
     });
 
     // =====================
+    // 🚛 DRIVERS
+    // =====================
+    const driverUser = await User.create({
+      name: "Driver One",
+      email: "driver@fastfare.com",
+      pwdhash,
+      role: "driver"
+    });
+
+    await DriverDetails.create({
+      userId: driverUser._id,
+      logisticClientId: logistic._id,
+      name: "Driver One",
+      email: "driver@fastfare.com",
+      contactNumber: 9876543210,
+      licenseNumber: "MH12DL1234",
+      vehicleNumber: "MH12AB1234",
+      chasisNo: "CHASIS1234",
+      status: "available"
+    });
+
+    // =====================
     // 📦 SHIPMENTS
     // =====================
+    const statuses = ["pending", "confirmed", "in-transit", "delivered", "cancelled"];
+    const shipments = [];
 
-    await Shipment.create([
-      {
+    for (const status of statuses) {
+      const shipment = new Shipment({
         shipmentId: `FFR-${nanoid(5)}`,
         userId: user1._id,
-        pickupLocation: {
+        pickupDetails: {
+          longitude: 77.2090,
           latitude: 28.6139,
-          longitude: 77.2090
+          email: "pickup@fastfare.com",
+          address: "Delhi",
+          contactNumber: 9999999999
         },
-        deliveryLocation: {
+        deliveryDetails: {
+          longitude: 72.8777,
           latitude: 19.0760,
-          longitude: 72.8777
+          email: "delivery@fastfare.com",
+          address: "Mumbai",
+          contactNumber: 8888888888
         },
         size: {
           length: 10,
@@ -125,31 +147,19 @@ async function seed() {
         weight: 50,
         netWeight: 48,
         price: 1500,
-        status: "booked"
-      },
-      {
-        shipmentId: `FFR-${nanoid(5)}`,
-        userId: user1._id,
-        pickupLocation: {
-          latitude: 12.9716,
-          longitude: 77.5946
-        },
-        deliveryLocation: {
-          latitude: 13.0827,
-          longitude: 80.2707
-        },
-        size: {
-          length: 6,
-          width: 4,
-          height: 3
-        },
-        quantity: 1,
-        weight: 20,
-        netWeight: 18,
-        price: 800,
-        status: "in-transit"
+        status: status,
+        pickupQrToken: `PCK-${nanoid(5)}`,
+        deliveryQrToken: `DEL-${nanoid(5)}`
+      });
+
+      if (status !== "pending") {
+        shipment.DriverId = driverUser._id;
       }
-    ]);
+
+      shipments.push(shipment);
+    }
+
+    await Shipment.insertMany(shipments);
 
     console.log("✅ Database seeded successfully!");
     process.exit(0);

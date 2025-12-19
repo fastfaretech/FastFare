@@ -6,28 +6,69 @@ const shipmentSchema = new mongoose.Schema({
         ref: "USER",
         required: true
     },
+    logisticClientId:{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "LOGISTIC_DETAILS",
+    },
+    DriverId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "DRIVER_DETAILS",
+    },
     shipmentId:{
         type: String,
         required: true,
-        unique: true,
-        
+        unique: true,  
     },
-    pickupLocation:{
+    pickupQrToken:{
+        type: String,
+        required: true,
+        unique: true,
+    },
+    deliveryQrToken:{
+        type: String,
+        required: true,
+        unique: true,
+    },
+    pickupDetails:{
         longitude:{
             type: Number,
             required: true
         },
         latitude:{
+            type: Number,
+            required: true
+        },
+        email:{
+            type: String,
+            required: true
+        },
+        address:{
+            type: String,
+            required: true
+        },
+        contactNumber:{
             type: Number,
             required: true
         }
     },
-    deliveryLocation:{
+    deliveryDetails:{
         longitude:{
             type: Number,
             required: true
         },
         latitude:{
+            type: Number,
+            required: true
+        },
+        email:{
+            type: String,
+            required: true
+        },
+        address:{
+            type: String,
+            required: true
+        },
+        contactNumber:{
             type: Number,
             required: true
         }
@@ -60,7 +101,7 @@ const shipmentSchema = new mongoose.Schema({
     },
     status:{
         type: String,
-        enum: ["pending", "booked", "in-transit", "delivered", "cancelled"],
+        enum: ["confirmed", "rejected", "pending", "in-transit", "delivered", "cancelled"],
         default: "pending"
     },
     price:{
@@ -73,5 +114,5 @@ const shipmentSchema = new mongoose.Schema({
     }
 })
 
-const Shipment = mongoose.model("SHIPMENT", shipmentSchema)
+const Shipment = mongoose.model("SHIPMENTS", shipmentSchema)
 export { Shipment }

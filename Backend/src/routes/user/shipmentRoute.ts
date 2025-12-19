@@ -7,8 +7,10 @@ import { BookShipments, GetShipments, ListShipments } from "../../controllers/us
 const router = Router()
 
 router.post('/order/book', Authenticate, Authorize(["user"]), BookShipments)
-router.get('/order/get/:shipmentId', Authenticate, Authorize(["user"]), GetShipments)
+router.get('/order/get/:shipmentId', Authenticate, Authorize(["user", "driver"]), GetShipments)
+
+
 // nishant change for testing
-router.get("/order/list", Authenticate, Authorize(["user"]), ListShipments);
+router.get("/order/list", Authenticate, Authorize(["user","driver"]), ListShipments);
 
 export default router
