@@ -28,8 +28,13 @@ export default function QRScanScreen() {
       const shipmentId = params.get("sid");
       const token = await SecureStore.getItemAsync("authToken");
 
-      if (!shipmentId || !token) {
-        Alert.alert("Error", "Invalid QR code or missing token.");
+      if (!shipmentId) {
+        Alert.alert("Error", "Invalid shipment code");
+        return;
+      }
+
+      if (!token){
+        Alert.alert("Error", "Invalid token");
         return;
       }
 

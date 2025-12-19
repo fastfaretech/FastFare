@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface FAQItemProps {
   question: string;
@@ -16,7 +17,7 @@ const FAQItem: React.FC<FAQItemProps> = ({ question, answer }) => {
         onPress={() => setIsOpen(!isOpen)}
         className="flex flex-row justify-between items-center py-3"
       >
-        <Text className="text-base font-bold text-gray-800">{question}</Text>
+        <Text className="text-base font-bold text-gray-800 dark:text-slate-100">{question}</Text>
         <Ionicons
           name={isOpen ? 'chevron-up' : 'chevron-down'}
           size={20}
@@ -25,7 +26,7 @@ const FAQItem: React.FC<FAQItemProps> = ({ question, answer }) => {
       </TouchableOpacity>
       {isOpen && (
         <View className="mt-2 mb-3">
-          <Text className="text-sm text-gray-600">{answer}</Text>
+          <Text className="text-sm text-gray-600 dark:text-slate-200">{answer}</Text>
         </View>
       )}
     </View>
@@ -57,11 +58,13 @@ const FAQsScreen: React.FC = () => {
   ];
 
   return (
-    <View className="p-4 bg-white">
+    <SafeAreaView className="flex-1 bg-slate-100 dark:bg-slate-900">
+    <View className="p-4 bg-white dark:bg-slate-700 dark:text-slate-400">
       {faqs.map((faq, index) => (
         <FAQItem key={index} question={faq.question} answer={faq.answer} />
       ))}
     </View>
+    </SafeAreaView>
   );
 };
 

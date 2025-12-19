@@ -7,6 +7,7 @@ import * as TaskManager from "expo-task-manager";
 import Constants from "expo-constants";
 import { useLocalSearchParams } from "expo-router";
 import { ThemedView } from "@/components/themed-view";
+import truck from "../assets/images/truck.png";
 
 const LOCATION_TASK_NAME = "BACKGROUND_LOCATION_TASK";
 const GOOGLE_MAPS_APIKEY = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY;
@@ -19,8 +20,8 @@ type ShipmentStatus = "pending" | "booked" | "in-transit" | "delivered" | "cance
 interface Shipment {
   _id: string;
   shipmentId: string;
-  pickupLocation: { latitude: number; longitude: number };
-  deliveryLocation: { latitude: number; longitude: number };
+  pickupDetails: { latitude: number; longitude: number };
+  deliveryDetails: { latitude: number; longitude: number };
   quantity: number;
   status: ShipmentStatus;
   createdAt: string;
@@ -160,8 +161,8 @@ export default function MapScreen() {
     );
   }
 
-  const pickup = shipment.pickupLocation;
-  const destination = shipment.deliveryLocation;
+  const pickup = shipment.pickupDetails;
+  const destination = shipment.deliveryDetails;
 
   const region: Region = {
     latitude: (pickup.latitude + destination.latitude) / 2,
@@ -173,9 +174,9 @@ export default function MapScreen() {
   return (
     <ThemedView className="flex-1">
       <MapView provider={PROVIDER_GOOGLE} style={{ flex: 1 }} initialRegion={region}>
-        <Marker coordinate={pickup} title="Pickup" />
+        <Marker coordinate={pickup} title="Pickup" pinColor="green" />
         <Marker coordinate={destination} title="Destination" />
-        {driverLocation && <Marker coordinate={driverLocation} title="Driver" pinColor="blue" />}
+        {driverLocation && <Marker coordinate={driverLocation} title="Driver" image={truck} />}
         <MapViewDirections
           origin={pickup}
           destination={destination}
