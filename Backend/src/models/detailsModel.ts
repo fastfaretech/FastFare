@@ -1,4 +1,3 @@
-import { create } from "domain"
 import mongoose from "mongoose"
 
 const userDetailsSchema = new mongoose.Schema({
@@ -88,11 +87,16 @@ const adminDetailsSchema = new mongoose.Schema({
 const AdminDetails = mongoose.model("ADMIN_DETAILS", adminDetailsSchema)
 
 const driverDetailsSchema = new mongoose.Schema({
+    userId:{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "USER",
+        required: true,
+        unique: true
+    },
     logisticClientId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "LOGISTIC_DETAILS",
         required: true,
-        unique: true
     },
     name: {
         type: String,
@@ -102,6 +106,14 @@ const driverDetailsSchema = new mongoose.Schema({
         type: String,
         required: true,
         unique: true
+    },
+    latitude:{
+        type: Number,
+        default: null
+    },
+    longitude:{
+        type: Number,
+        default: null
     },
     contactNumber: {
         type: Number,
@@ -128,7 +140,15 @@ const driverDetailsSchema = new mongoose.Schema({
         enum: ["available", "unavailable", "on-duty"],
         default: "available"
     },
+    currentOrders:{
+        type: Number,
+        default: 0
+    },
     createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt:{
         type: Date,
         default: Date.now
     }

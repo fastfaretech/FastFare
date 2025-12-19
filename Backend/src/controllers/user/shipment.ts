@@ -1,6 +1,25 @@
 import { Request, Response } from "express";
-import { nanoid } from "nanoid";
+import crypto from "crypto";
+import nodemailer from "nodemailer";
+import QRCode from "qrcode";
 import { Shipment } from "../../models/shipmentModel";
+import { config } from "../../utils/envConfig";
+
+function generateQrPayload(
+    shipmentId: string,
+    qrToken: string
+): string{
+    return `sid=${shipmentId}&token=${qrToken}`;
+}
+
+async function createQrBuffer(payload: string): Promise<Buffer> {
+  return QRCode.toBuffer(payload, {
+    type: "png",
+    errorCorrectionLevel: "M",
+    margin: 2,
+    scale: 5,
+  });
+}
 
 export async function BookShipments(req: Request, res: Response) {
     try{
@@ -8,11 +27,17 @@ export async function BookShipments(req: Request, res: Response) {
         const {
             pickupLocation: {
                 longitude: pickupLongitude,
-                latitude: pickupLatitude
+                latitude: pickupLatitude,
+                email: pickupEmail,
+                address: address,
+                contactNumber: contactNumber
             },
             deliveryLocation: {
                 longitude: deliveryLongitude,
-                latitude: deliveryLatitude
+                latitude: deliveryLatitude,
+                email: deliveryEmail,
+                address: deliveryAddress,
+                contactNumber: deliveryContactNumber
             },
             size: {
                 length,
@@ -25,32 +50,45 @@ export async function BookShipments(req: Request, res: Response) {
             price
         } = req.body;
 
-        if (!pickupLongitude ||
-            !pickupLatitude || 
-            !deliveryLongitude || 
-            !deliveryLatitude || 
-            !length || 
-            !width || 
-            !height || 
-            !quantity || 
-            !weight || 
-            !netWeight || 
-            !price) {
+        if (
+            pickupLongitude == null ||
+            pickupLatitude == null ||
+            deliveryLongitude == null ||
+            deliveryLatitude == null ||
+            length == null ||
+            width == null ||
+            height == null ||
+            quantity == null ||
+            weight == null ||
+            netWeight == null ||
+            price == null
+            ) {
             console.log("All fields are required!");
             return res.status(400).json({ message: "All fields are required!" });
         }
 
-        const shipmentId = `FFR+${nanoid(5)}`;
+        const pickupQrToken = `PCK-${crypto.randomBytes(5).toString('hex').toUpperCase()}`;
+        const deliveryQrToken = `DEL-${crypto.randomBytes(5).toString('hex').toUpperCase()}`;
+        const shipmentId = `FFR-${crypto.randomBytes(5).toString('hex').toUpperCase()}`;
+
         const newShipment = new Shipment({
             shipmentId,
+            pickupQrToken,
+            deliveryQrToken,
             userId: user?._id,
-            pickupLocation: {
+            pickupDetails: {
                 longitude: pickupLongitude,
-                latitude: pickupLatitude
+                latitude: pickupLatitude,
+                email: pickupEmail,
+                address: address,
+                contactNumber: contactNumber
             },
-            deliveryLocation: {
+            deliveryDetails: {
                 longitude: deliveryLongitude,
-                latitude: deliveryLatitude
+                latitude: deliveryLatitude,
+                email: deliveryEmail,
+                address: deliveryAddress,
+                contactNumber: deliveryContactNumber
             },
             size: {
                 length,
@@ -64,6 +102,70 @@ export async function BookShipments(req: Request, res: Response) {
             status: "pending"
         })
         await newShipment.save();
+
+        const qrPayloadpck = generateQrPayload(shipmentId, pickupQrToken);
+        const qrbufferpck = await createQrBuffer(qrPayloadpck);
+        const qrPayloaddel = generateQrPayload(shipmentId, deliveryQrToken);
+        const qrbufferdel = await createQrBuffer(qrPayloaddel);
+        console.log(qrbufferdel)
+
+        const htmlpck = `
+            <div style="font-family: sans-serif; text-align: center;">
+                <h2>Shipment Pickup QR Code</h2>
+                <p>Scan this QR code at the pickup point for shipment <strong>${shipmentId}</strong>.</p>
+                <img src="cid:pickupqr@fastfare" alt="Pickup QR" style="max-width: 220px; border: 1px solid #ccc; padding: 4px;" />
+            </div>
+            `;
+
+            const htmldel = `
+            <div style="font-family: sans-serif; text-align: center;">
+                <h2>Shipment Delivery QR Code</h2>
+                <p>Scan this QR code at the delivery point for shipment <strong>${shipmentId}</strong>.</p>
+                <img src="cid:deliveryqr@fastfare" alt="Delivery QR" style="max-width: 220px; border: 1px solid #ccc; padding: 4px;" />
+            </div>
+            `;
+
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: config.EMAIL_ID,
+                pass: config.GMAIL_API
+            }
+        })
+
+        const mailOptionsPCK = {
+            from: config.EMAIL_ID,
+            to: pickupEmail,
+            subject: "Shipment Booking Confirmation - FastFare (Pickup QR)",
+            html: htmlpck,
+            attachments: [
+                {
+                filename: "pickup-qr.png",
+                content: qrbufferpck,
+                cid: "pickupqr@fastfare",
+                },
+            ],
+            };
+
+            const mailOptionsDEL = {
+            from: config.EMAIL_ID,
+            to: deliveryEmail,
+            subject: "Shipment Booking Confirmation - FastFare (Delivery QR)",
+            html: htmldel,
+            attachments: [
+                {
+                filename: "delivery-qr.png",
+                content: qrbufferdel,
+                cid: "deliveryqr@fastfare",
+                },
+            ],
+            };
+
+        await transporter.sendMail(mailOptionsPCK);
+        await transporter.sendMail(mailOptionsDEL);
+
+        console.log(`Email sent to ${pickupEmail} and ${deliveryEmail} successfully!`);
+        
         console.log("Shipment booked successfully!");
         return res.status(201).json({
             message: "Shipment booked successfully!",
