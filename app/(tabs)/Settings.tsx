@@ -181,6 +181,19 @@ export default function SettingsScreen() {
               </Text>
             </View>
           </TouchableOpacity>
+          <TouchableOpacity
+            className="flex-row justify-between items-center mb-3"
+            onPress={()=>router.push("/faqs")}
+          >
+            <View>
+              <Text className="text-base text-slate-900 dark:text-slate-50">
+                FAQs
+              </Text>
+              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Find answers to common questions
+              </Text>
+            </View>
+          </TouchableOpacity>
         </View>
       </ScrollView>
 

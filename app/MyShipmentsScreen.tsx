@@ -10,21 +10,16 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import * as Location from "expo-location";
 
-type ShipmentStatus =
-  | "pending"
-  | "booked"
-  | "in-transit"
-  | "delivered"
-  | "cancelled";
+type ShipmentStatus = "confirmed" | "rejected" | "pending" | "in-transit" | "delivered" | "cancelled";
 
 interface Shipment {
   _id: string;
   shipmentId: string;
-  pickupLocation: {
+  pickupDetails: {
     latitude: number;
     longitude: number;
   };
-  deliveryLocation: {
+  deliveryDetails: {
     latitude: number;
     longitude: number;
   };
@@ -40,19 +35,23 @@ interface MyShipmentsScreenProps {
 const FILTERS: { label: string; value: ShipmentStatus | "all" }[] = [
   { label: "All", value: "all" },
   { label: "Pending", value: "pending" },
-  { label: "Booked", value: "booked" },
+  { label: "Confirmed", value: "confirmed" },
   { label: "In-transit", value: "in-transit" },
   { label: "Delivered", value: "delivered" },
   { label: "Cancelled", value: "cancelled" },
+  { label: "Rejected", value: "rejected" },
 ];
 
 async function coordsToAddressString(lat: number, lng: number) {
   try {
-    const res = await Location.reverseGeocodeAsync({
-      latitude: lat,
-      longitude: lng,
-    });
-    if (!res.length) return "";
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      console.log('Permission to access location was denied');
+      return '';
+    }
+
+    const res = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+    if (!res.length) return '';
     const addr = res[0];
     return [
       addr.name,
@@ -121,12 +120,12 @@ const MyShipmentsScreen: React.FC<MyShipmentsScreenProps> = ({ token }) => {
       const newAddressMap = { ...addressMap };
       for (const s of apiShipments) {
         const pickupAddr = await coordsToAddressString(
-          s.pickupLocation.latitude,
-          s.pickupLocation.longitude
+          s.pickupDetails.latitude,
+          s.pickupDetails.longitude
         );
         const dropAddr = await coordsToAddressString(
-          s.deliveryLocation.latitude,
-          s.deliveryLocation.longitude
+          s.deliveryDetails.latitude,
+          s.deliveryDetails.longitude
         );
         newAddressMap[s._id] = `${pickupAddr} → ${dropAddr}`;
       }
@@ -149,7 +148,8 @@ const MyShipmentsScreen: React.FC<MyShipmentsScreenProps> = ({ token }) => {
     if (status === "pending") baseColors = "bg-amber-200 text-slate-800";
     if (status === "in-transit") baseColors = "bg-blue-400 text-white";
     if (status === "delivered") baseColors = "bg-green-500 text-white";
-    if (status === "cancelled") baseColors = "bg-red-500 text-white";
+    if (status === "cancelled" || status === "rejected") baseColors = "bg-red-500 text-white";
+    if (status === "confirmed") baseColors = "bg-green-200 text-slate-800";
 
     return (
       <View className={`px-2 py-1 rounded-full ${baseColors}`}>

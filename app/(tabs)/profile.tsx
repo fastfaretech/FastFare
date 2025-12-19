@@ -16,7 +16,7 @@ const API_BASE_URL = "http://172.27.25.158:3000";
 interface UserProfile {
   name: string;
   email: string;
-  role: "admin" | "logistic" | "user";
+  role: "admin" | "logistic" | "user" | "driver";
   contactNumber?: string;
   age?: number;
   companyDetails?: {
@@ -24,6 +24,16 @@ interface UserProfile {
     gstin: string;
     address: string;
   };
+}
+
+interface DriverDetails {
+  name: string;
+  email: string;
+  contactNumber: number;
+  licenseNumber: string;
+  vehicleNumber: string;
+  chasisNo: string;
+  status: string;
 }
 
 // Dummy data for fallback
@@ -40,8 +50,19 @@ const DUMMY_PROFILE: UserProfile = {
   },
 };
 
+const DUMMY_DRIVER_DETAILS: DriverDetails = {
+  name: "Driver One",
+  email: "driver@fastfare.com",
+  contactNumber: 9876543210,
+  licenseNumber: "MH12DL1234",
+  vehicleNumber: "MH12AB1234",
+  chasisNo: "CHASIS1234",
+  status: "available",
+};
+
 export default function ProfileScreen() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [driverDetails, setDriverDetails] = useState<DriverDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
@@ -75,11 +96,15 @@ export default function ProfileScreen() {
         return;
       }
 
-      const data = JSON.parse(text) as { user: UserProfile };
+      const data = JSON.parse(text) as { user: UserProfile; details: DriverDetails | any };
       setProfile(data.user);
+      if (data.user.role === "driver") {
+        setDriverDetails(data.details);
+      }
     } catch (e: any) {
       // Fallback to dummy data on error
       setProfile(DUMMY_PROFILE);
+      setDriverDetails(DUMMY_DRIVER_DETAILS);
       setError(e.message ?? "Something went wrong");
     } finally {
       setLoading(false);
@@ -127,6 +152,7 @@ export default function ProfileScreen() {
   // Use profile or dummy data
   const currentProfile = profile || DUMMY_PROFILE;
   const driverId = `DRV-${String(currentProfile.email.split("@")[0]).toUpperCase()}`;
+  const currentDriverDetails = driverDetails || DUMMY_DRIVER_DETAILS;
 
   return (
     <SafeAreaView className="flex-1 bg-slate-100 dark:bg-slate-900">
@@ -184,19 +210,49 @@ export default function ProfileScreen() {
 
         {/* Company / fleet info card */}
         <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-3 shadow-sm">
-        <Text className="text-lg font-semibold text-slate-500 dark:text-slate-300 mb-2">
-          Company
-        </Text>
-        <Text className="text-xl text-slate-900 dark:text-slate-50">
-          {currentProfile.companyDetails?.companyName || DUMMY_PROFILE.companyDetails.companyName}
-        </Text>
-        <Text className="text-lg text-slate-600 dark:text-slate-300 mt-1">
-          GSTIN: {currentProfile.companyDetails?.gstin || DUMMY_PROFILE.companyDetails.gstin}
-        </Text>
-        <Text className="text-lg text-slate-600 dark:text-slate-300 mt-1">
-          {currentProfile.companyDetails?.address || DUMMY_PROFILE.companyDetails.address}
-        </Text>
-      </View>
+          <Text className="text-lg font-semibold text-slate-500 dark:text-slate-300 mb-2">
+            Company
+          </Text>
+          <Text className="text-xl text-slate-900 dark:text-slate-50">
+            {currentProfile.companyDetails?.companyName || DUMMY_PROFILE.companyDetails.companyName}
+          </Text>
+          <Text className="text-lg text-slate-600 dark:text-slate-300 mt-1">
+            GSTIN: {currentProfile.companyDetails?.gstin || DUMMY_PROFILE.companyDetails.gstin}
+          </Text>
+          <Text className="text-lg text-slate-600 dark:text-slate-300 mt-1">
+            {currentProfile.companyDetails?.address || DUMMY_PROFILE.companyDetails.address}
+          </Text>
+        </View>
+
+        {/* Driver details card */}
+        {currentProfile.role === "driver" && (
+          <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-3 shadow-sm">
+            <Text className="text-lg font-semibold text-slate-500 dark:text-slate-300 mb-2">
+              Driver Details
+            </Text>
+            <Text className="text-lg text-slate-600 dark:text-slate-300">
+              Name: <Text className="font-semibold">{currentDriverDetails.name}</Text>
+            </Text>
+            <Text className="text-lg text-slate-600 dark:text-slate-300 mt-1">
+              Email: <Text className="font-semibold">{currentDriverDetails.email}</Text>
+            </Text>
+            <Text className="text-lg text-slate-600 dark:text-slate-300 mt-1">
+              Contact Number: <Text className="font-semibold">{currentDriverDetails.contactNumber}</Text>
+            </Text>
+            <Text className="text-lg text-slate-600 dark:text-slate-300 mt-1">
+              License Number: <Text className="font-semibold">{currentDriverDetails.licenseNumber}</Text>
+            </Text>
+            <Text className="text-lg text-slate-600 dark:text-slate-300 mt-1">
+              Vehicle Number: <Text className="font-semibold">{currentDriverDetails.vehicleNumber}</Text>
+            </Text>
+            <Text className="text-lg text-slate-600 dark:text-slate-300 mt-1">
+              Chasis Number: <Text className="font-semibold">{currentDriverDetails.chasisNo}</Text>
+            </Text>
+            <Text className="text-lg text-slate-600 dark:text-slate-300 mt-1">
+              Status: <Text className="font-semibold">{currentDriverDetails.status}</Text>
+            </Text>
+          </View>
+        )}
 
         {/* Actions card (logout only) */}
         <View className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm">

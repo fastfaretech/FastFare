@@ -4,7 +4,7 @@ import MapView, { Marker, PROVIDER_GOOGLE, Region } from "react-native-maps";
 import MapViewDirections from "react-native-maps-directions";
 import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
-import Constants, { ExecutionEnvironment } from "expo-constants";
+import Constants from "expo-constants";
 import { useLocalSearchParams } from "expo-router";
 import { ThemedView } from "@/components/themed-view";
 
@@ -12,7 +12,7 @@ const LOCATION_TASK_NAME = "BACKGROUND_LOCATION_TASK";
 const GOOGLE_MAPS_APIKEY = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY;
 const API_BASE_URL = "http://172.27.25.158:3000";
 const BACKEND_URL = `${API_BASE_URL}/api/v1/driver/location`;
-const isExpoGo: boolean = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+const isExpoGo: boolean = Constants.executionEnvironment === "storeClient";
 
 type ShipmentStatus = "pending" | "booked" | "in-transit" | "delivered" | "cancelled";
 
@@ -26,10 +26,8 @@ interface Shipment {
   createdAt: string;
 }
 
-// Background task: ONLY used in dev/prod builds, not Expo Go
 TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
-  // Skip completely when running inside Expo Go (background not supported)
-  if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) {
+  if (Constants.executionEnvironment === "storeClient") {
     return;
   }
 
@@ -69,9 +67,8 @@ export default function MapScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+  const isExpoGo = Constants.executionEnvironment === "storeClient";
 
-  // Fetch shipment from backend (works in Expo Go and dev/prod)
   useEffect(() => {
     const fetchShipment = async () => {
       try {
@@ -109,9 +106,6 @@ export default function MapScreen() {
     fetchShipment();
   }, [shipmentId, token]);
 
-  // Live location tracking:
-  // - Foreground watch ALWAYS (for driver marker)
-  // - Background updates ONLY outside Expo Go
   useEffect(() => {
     const startLocationTracking = async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -120,7 +114,6 @@ export default function MapScreen() {
         return;
       }
 
-      // Foreground updates (works in Expo Go too)
       Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.BestForNavigation,
@@ -129,10 +122,8 @@ export default function MapScreen() {
         (loc) => setDriverLocation(loc.coords)
       );
 
-      // Background tracking only in dev/prod builds
       if (!isExpoGo) {
         await Location.requestBackgroundPermissionsAsync();
-
         await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
           accuracy: Location.Accuracy.BestForNavigation,
           showsBackgroundLocationIndicator: true,

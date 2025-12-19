@@ -10,27 +10,31 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
 import * as Location from "expo-location";
 
-type ShipmentStatus =
-  | "pending"
-  | "booked"
-  | "in-transit"
-  | "delivered"
-  | "cancelled";
+type ShipmentStatus = "confirmed" | "rejected" | "pending" | "in-transit" | "delivered" | "cancelled";
 
 interface Shipment {
   _id: string;
   shipmentId: string;
-  pickupLocation: {
+  pickupDetails: {
     latitude: number;
     longitude: number;
   };
-  deliveryLocation: {
+  deliveryDetails: {
     latitude: number;
     longitude: number;
   };
   quantity: number;
   status: ShipmentStatus;
   createdAt: string;
+  DriverId?: string;
+}
+
+interface DriverDetails {
+  name: string;
+  contactNumber: number;
+  licenseNumber: string;
+  vehicleNumber: string;
+  status: string;
 }
 
 const API_BASE_URL = "http://172.27.25.158:3000";
@@ -68,6 +72,7 @@ export default function ShipmentDetailsScreen() {
   }>();
 
   const [shipment, setShipment] = useState<Shipment | null>(null);
+  const [driverDetails, setDriverDetails] = useState<DriverDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pickupAddress, setPickupAddress] = useState("");
@@ -111,14 +116,32 @@ export default function ShipmentDetailsScreen() {
       const s: Shipment = data.shipment;
       setShipment(s);
 
+      // Fetch driver details if DriverId is present
+      if (s.DriverId) {
+        const driverRes = await fetch(
+          `${API_BASE_URL}/api/v1/driver/details/${s.DriverId}`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${jwt}`,
+            },
+          }
+        );
+
+        if (driverRes.ok) {
+          const driverData = await driverRes.json();
+          setDriverDetails(driverData.details);
+        }
+      }
+
       // Fire reverse‑geocoding in parallel
       coordsToAddressString(
-        s.pickupLocation.latitude,
-        s.pickupLocation.longitude
+        s.pickupDetails.latitude,
+        s.pickupDetails.longitude
       ).then(setPickupAddress);
       coordsToAddressString(
-        s.deliveryLocation.latitude,
-        s.deliveryLocation.longitude
+        s.deliveryDetails.latitude,
+        s.deliveryDetails.longitude
       ).then(setDropAddress);
     } catch (e: any) {
       setError(e.message ?? "Something went wrong");
@@ -136,9 +159,12 @@ export default function ShipmentDetailsScreen() {
     } else if (status === "delivered") {
       bg = "bg-green-500";
       text = "text-white";
-    } else if (status === "cancelled") {
+    } else if (status === "cancelled" || status === "rejected") {
       bg = "bg-red-500";
       text = "text-white";
+    } else if (status === "confirmed") {
+      bg = "bg-green-200";
+      text = "text-slate-800";
     }
 
     return (
@@ -240,8 +266,8 @@ export default function ShipmentDetailsScreen() {
               {pickupAddress || "Resolving pickup address..."}
             </Text>
             <Text className="text-xs text-slate-500 dark:text-slate-300">
-              {shipment.pickupLocation.latitude.toFixed(6)},{" "}
-              {shipment.pickupLocation.longitude.toFixed(6)}
+              {shipment.pickupDetails.latitude.toFixed(6)},{" "}
+              {shipment.pickupDetails.longitude.toFixed(6)}
             </Text>
           </View>
 
@@ -267,10 +293,34 @@ export default function ShipmentDetailsScreen() {
               {dropAddress || "Resolving drop address..."}
             </Text>
             <Text className="text-xs text-slate-500 dark:text-slate-300">
-              {shipment.deliveryLocation.latitude.toFixed(6)},{" "}
-              {shipment.deliveryLocation.longitude.toFixed(6)}
+              {shipment.deliveryDetails.latitude.toFixed(6)},{" "}
+              {shipment.deliveryDetails.longitude.toFixed(6)}
             </Text>
           </View>
+
+          {/* Driver details */}
+          {shipment.DriverId && driverDetails && (
+            <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-3 shadow-sm">
+              <Text className="text-sm font-semibold text-slate-500 dark:text-slate-300 mb-2">
+                Driver Details
+              </Text>
+              <Text className="text-base text-slate-800 dark:text-slate-50">
+                Name: <Text className="font-semibold">{driverDetails.name}</Text>
+              </Text>
+              <Text className="text-base text-slate-800 dark:text-slate-50 mt-1">
+                Contact Number: <Text className="font-semibold">{driverDetails.contactNumber}</Text>
+              </Text>
+              <Text className="text-base text-slate-800 dark:text-slate-50 mt-1">
+                License Number: <Text className="font-semibold">{driverDetails.licenseNumber}</Text>
+              </Text>
+              <Text className="text-base text-slate-800 dark:text-slate-50 mt-1">
+                Vehicle Number: <Text className="font-semibold">{driverDetails.vehicleNumber}</Text>
+              </Text>
+              <Text className="text-base text-slate-800 dark:text-slate-50 mt-1">
+                Status: <Text className="font-semibold">{driverDetails.status}</Text>
+              </Text>
+            </View>
+          )}
 
           {/* Buttons */}
           <TouchableOpacity className="bg-blue-600 rounded-full py-3.5 items-center mb-2">
