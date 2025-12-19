@@ -1,5 +1,4 @@
-// app/Settings.tsx
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,6 +8,8 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  Modal,
+  TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -18,14 +19,39 @@ export default function SettingsScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
 
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [feedback, setFeedback] = useState("");
+  const [isContactModalVisible, setIsContactModalVisible] = useState(false);
+  const [contactMessage, setContactMessage] = useState("");
+
   const toggleTheme = () => {
     Appearance.setColorScheme(isDark ? "light" : "dark");
   };
 
   const handleLogout = async () => {
-      await SecureStore.deleteItemAsync("authToken");
-      router.replace("/(auth)/user-login");
-    };
+    await SecureStore.deleteItemAsync("authToken");
+    router.replace("/(auth)/user-login");
+  };
+
+  const handleHelpCenter = () => {
+    setIsModalVisible(true);
+  };
+
+  const handleSubmitFeedback = () => {
+    Alert.alert("Thank you!", "We will look into your feedback and make improvements.");
+    setIsModalVisible(false);
+    setFeedback("");
+  };
+
+  const handleContactSupport = () => {
+    setIsContactModalVisible(true);
+  };
+
+  const handleSubmitContact = () => {
+    Alert.alert("Thank you!", "We will get back to you soon.");
+    setIsContactModalVisible(false);
+    setContactMessage("");
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-slate-100 dark:bg-slate-900">
@@ -128,18 +154,24 @@ export default function SettingsScreen() {
           Help & Support
         </Text>
         <View className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm">
-          <TouchableOpacity className="flex-row justify-between items-center mb-3">
+          <TouchableOpacity
+            className="flex-row justify-between items-center mb-3"
+            onPress={handleHelpCenter}
+          >
             <View>
               <Text className="text-base text-slate-900 dark:text-slate-50">
                 Help Center
               </Text>
               <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                FAQs and app usage tips
+                Report a problem with a trip or the app
               </Text>
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity className="flex-row justify-between items-center mb-3">
+          <TouchableOpacity
+            className="flex-row justify-between items-center mb-3"
+            onPress={handleContactSupport}
+          >
             <View>
               <Text className="text-base text-slate-900 dark:text-slate-50">
                 Contact Support
@@ -149,26 +181,82 @@ export default function SettingsScreen() {
               </Text>
             </View>
           </TouchableOpacity>
-
-          <TouchableOpacity className="flex-row justify-between items-center">
-            <View>
-              <Text className="text-base text-slate-900 dark:text-slate-50">
-                Report an Issue
-              </Text>
-              <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Report a problem with a trip or the app
-              </Text>
-            </View>
-          </TouchableOpacity>
-          {/* <TouchableOpacity onPress={async () => {
-  await SecureStore.deleteItemAsync('authToken');
-  Alert.alert('Token cleared');
-}}>
-  <Text>Clear Token</Text>
-</TouchableOpacity> */}
-
         </View>
       </ScrollView>
+
+      {/* Help Center Feedback Modal */}
+      <Modal
+        visible={isModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setIsModalVisible(false)}
+      >
+        <View className="flex-1 justify-center items-center bg-black bg-opacity-50">
+          <View className="bg-white dark:bg-slate-800 rounded-xl p-6 w-11/12 max-w-md">
+            <Text className="text-lg font-semibold text-slate-900 dark:text-slate-50 mb-4">
+              Help Center Feedback
+            </Text>
+            <TextInput
+              placeholder="Enter your feedback here..."
+              value={feedback}
+              onChangeText={setFeedback}
+              multiline
+              className="border border-slate-300 dark:border-slate-600 rounded-lg p-3 mb-4 text-slate-900 dark:text-slate-50"
+            />
+            <View className="flex-row justify-end">
+              <TouchableOpacity
+                onPress={() => setIsModalVisible(false)}
+                className="px-4 py-2 mr-2 bg-slate-200 dark:bg-slate-700 rounded-lg"
+              >
+                <Text className="text-slate-800 dark:text-slate-50">Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleSubmitFeedback}
+                className="px-4 py-2 bg-blue-500 rounded-lg"
+              >
+                <Text className="text-white">Submit</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Contact Support Modal */}
+      <Modal
+        visible={isContactModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setIsContactModalVisible(false)}
+      >
+        <View className="flex-1 justify-center items-center bg-black bg-opacity-50">
+          <View className="bg-white dark:bg-slate-800 rounded-xl p-6 w-11/12 max-w-md">
+            <Text className="text-lg font-semibold text-slate-900 dark:text-slate-50 mb-4">
+              Contact Support
+            </Text>
+            <TextInput
+              placeholder="Enter your message here..."
+              value={contactMessage}
+              onChangeText={setContactMessage}
+              multiline
+              className="border border-slate-300 dark:border-slate-600 rounded-lg p-3 mb-4 text-slate-900 dark:text-slate-50"
+            />
+            <View className="flex-row justify-end">
+              <TouchableOpacity
+                onPress={() => setIsContactModalVisible(false)}
+                className="px-4 py-2 mr-2 bg-slate-200 dark:bg-slate-700 rounded-lg"
+              >
+                <Text className="text-slate-800 dark:text-slate-50">Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleSubmitContact}
+                className="px-4 py-2 bg-blue-500 rounded-lg"
+              >
+                <Text className="text-white">Send</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
