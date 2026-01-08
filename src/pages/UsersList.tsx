@@ -33,7 +33,7 @@ export default function UsersList() {
     <div className="relative bg-slate-950 min-h-screen text-white">
       <ParticleField />
 
-      <header className="fixed inset-x-0 top-0 z-30">
+      {/* <header className="fixed inset-x-0 top-0 z-30">
         <div className="backdrop-blur-md bg-black/30 border-b border-indigo-700/20">
           <div className="container mx-auto px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -48,7 +48,7 @@ export default function UsersList() {
             </button>
           </div>
         </div>
-      </header>
+      </header> */}
 
       <main className="pt-28 px-6 max-w-4xl mx-auto">
         <h2 className="text-3xl font-bold mb-6 text-cyan-400">All Users</h2>

@@ -1,9 +1,9 @@
 import { useEffect, useState, type JSX } from "react";
 import ParticleField from "../components/ParticleField";
 import { motion } from "framer-motion";
-import { Truck, CheckCircle2, Clock, Package, ArrowRight } from "lucide-react";
 import { apiFetch } from "../lib/api";
-import logo from "../assets/logo.png";
+import { Outlet } from "react-router-dom";
+
 
 // Types
 interface Stats {
@@ -37,101 +37,101 @@ const GLASS_CARD_LIGHT =
 const INLINE_BADGE =
     "inline-flex items-center gap-3 bg-indigo-700/12 rounded-full px-5 py-2 border border-indigo-600/12";
 
-function NavBar(): JSX.Element {
-    const [mobileOpen, setMobileOpen] = useState<boolean>(false);
+// function NavBar(): JSX.Element {
+//     const [mobileOpen, setMobileOpen] = useState<boolean>(false);
 
-    const links = ["Overview", "Partners", "Users", "Shipments"];
+//     const links = ["Overview", "Partners", "Users", "Shipments"];
 
-    return (
-        <header className="fixed inset-x-0 top-0 z-30">
-            <div className="backdrop-blur-md bg-black/30 border-b border-indigo-700/20">
-                <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <img
-                            src={logo}
-                            alt="FastFare"
-                            width={40}
-                            height={40}
-                            className="object-contain h-8"
-                        />
-                        <div className="text-white font-extrabold text-lg">
-                            FastFare — Admin
-                        </div>
-                    </div>
+//     return (
+//         <header className="fixed inset-x-0 top-0 z-30">
+//             <div className="backdrop-blur-md bg-black/30 border-b border-indigo-700/20">
+//                 <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+//                     <div className="flex items-center gap-4">
+//                         <img
+//                             src={logo}
+//                             alt="FastFare"
+//                             width={40}
+//                             height={40}
+//                             className="object-contain h-8"
+//                         />
+//                         <div className="text-white font-extrabold text-lg">
+//                             FastFare — Admin
+//                         </div>
+//                     </div>
 
-                    {/* Desktop nav */}
-                    <nav className="hidden md:flex items-center gap-8">
-                        {links.map((l) => (
-                            <a
-                                key={l}
-                                href="#"
-                                className="text-sm text-slate-200 hover:text-white"
-                            >
-                                {l}
-                            </a>
-                        ))}
-                    </nav>
+//                     {/* Desktop nav */}
+//                     <nav className="hidden md:flex items-center gap-8">
+//                         {links.map((l) => (
+//                             <a
+//                                 key={l}
+//                                 href="#"
+//                                 className="text-sm text-slate-200 hover:text-white"
+//                             >
+//                                 {l}
+//                             </a>
+//                         ))}
+//                     </nav>
 
-                    <div className="hidden md:flex items-center gap-4">
-                        <button
-                            className="text-slate-200 hover:text-white"
-                            onClick={() => (window.location.href = "/login")}
-                        >
-                            Sign in
-                        </button>
-                        <button
-                            className="px-4 py-2 rounded-lg bg-cyan-500/95 text-black font-semibold shadow-lg hover:scale-105 transition"
-                            onClick={() => (window.location.href = "/register")}
-                        >
-                            Get Started
-                        </button>
-                    </div>
+//                     <div className="hidden md:flex items-center gap-4">
+//                         <button
+//                             className="text-slate-200 hover:text-white"
+//                             onClick={() => (window.location.href = "/login")}
+//                         >
+//                             Sign in
+//                         </button>
+//                         <button
+//                             className="px-4 py-2 rounded-lg bg-cyan-500/95 text-black font-semibold shadow-lg hover:scale-105 transition"
+//                             onClick={() => (window.location.href = "/register")}
+//                         >
+//                             Get Started
+//                         </button>
+//                     </div>
 
-                    {/* Mobile hamburger */}
-                    <button
-                        className="md:hidden text-slate-200 text-2xl"
-                        onClick={() => setMobileOpen((prev) => !prev)}
-                        aria-label="Toggle menu"
-                    >
-                        ☰
-                    </button>
-                </div>
+//                     {/* Mobile hamburger */}
+//                     <button
+//                         className="md:hidden text-slate-200 text-2xl"
+//                         onClick={() => setMobileOpen((prev) => !prev)}
+//                         aria-label="Toggle menu"
+//                     >
+//                         ☰
+//                     </button>
+//                 </div>
 
-                {/* Mobile menu */}
-                {mobileOpen && (
-                    <div className="md:hidden border-t border-indigo-700/30">
-                        <nav className="px-6 py-4 space-y-3 bg-black/60">
-                            {links.map((l) => (
-                                <a
-                                    key={l}
-                                    href="#"
-                                    className="block text-sm text-slate-200 hover:text-white"
-                                >
-                                    {l}
-                                </a>
-                            ))}
+//                 {/* Mobile menu */}
+//                 {mobileOpen && (
+//                     <div className="md:hidden border-t border-indigo-700/30">
+//                         <nav className="px-6 py-4 space-y-3 bg-black/60">
+//                             {links.map((l) => (
+//                                 <a
+//                                     key={l}
+//                                     href="#"
+//                                     className="block text-sm text-slate-200 hover:text-white"
+//                                 >
+//                                     {l}
+//                                 </a>
+//                             ))}
 
-                            <div className="mt-4 space-y-2">
-                                <button
-                                    className="w-full text-left text-slate-200 hover:text-white"
-                                    onClick={() => (window.location.href = "/login")}
-                                >
-                                    Sign in
-                                </button>
-                                <button
-                                    className="w-full mt-1 px-4 py-2 rounded-lg bg-cyan-500/95 text-black font-semibold shadow-lg"
-                                    onClick={() => (window.location.href = "/register")}
-                                >
-                                    Get Started
-                                </button>
-                            </div>
-                        </nav>
-                    </div>
-                )}
-            </div>
-        </header>
-    );
-}
+//                             <div className="mt-4 space-y-2">
+//                                 <button
+//                                     className="w-full text-left text-slate-200 hover:text-white"
+//                                     onClick={() => (window.location.href = "/login")}
+//                                 >
+//                                     Sign in
+//                                 </button>
+//                                 <button
+//                                     className="w-full mt-1 px-4 py-2 rounded-lg bg-cyan-500/95 text-black font-semibold shadow-lg"
+//                                     onClick={() => (window.location.href = "/register")}
+//                                 >
+//                                     Get Started
+//                                 </button>
+//                             </div>
+//                         </nav>
+//                     </div>
+//                 )}
+//             </div>
+//         </header>
+//     );
+// }
 
 export default function Page(): JSX.Element | null {
     const [mounted, setMounted] = useState<boolean>(false);
@@ -185,12 +185,13 @@ export default function Page(): JSX.Element | null {
 
     return (
         <>
-            <NavBar />
+            {/* <NavBar /> */}
 
-            <main className="pt-28 min-h-screen bg-gradient-to-br from-brand-900 via-slate-900 to-black text-white relative overflow-hidden">
+            <main className="pt-2 min-h-screen bg-gradient-to-br from-brand-900 via-slate-900 to-black text-white relative overflow-hidden">
                 <ParticleField />
 
                 <section className="container mx-auto px-6 pb-16 relative z-10">
+                    <Outlet/>
                     <div className="grid lg:grid-cols-3 gap-8 items-start">
                         <div className="lg:col-span-2 space-y-6">
                             <div className={GLASS_CARD_DARK}>

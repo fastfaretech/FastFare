@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import ParticleField from "../components/ParticleField";
 import { apiFetch } from "../lib/api";
 import logo from "../assets/logo.png";
+import { Outlet } from "react-router-dom";
 
 const itemAnim = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } };
 const GLASS_CARD_DARK =
@@ -38,96 +39,96 @@ interface PartnerDashboardResponse extends PartnerStats {
     tasks?: Task[];
 }
 
-const NavBar: React.FC = () => {
-    const [mobileOpen, setMobileOpen] = useState<boolean>(false);
+// const NavBar: React.FC = () => {
+//     const [mobileOpen, setMobileOpen] = useState<boolean>(false);
 
-    const links = ["Dashboard", "Tasks", "Collections"];
+//     const links = ["Dashboard", "Tasks", "Collections"];
 
-    return (
-        <header className="fixed inset-x-0 top-0 z-30">
-            <div className="backdrop-blur-md bg-black/30 border-b border-indigo-700/20">
-                <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <img src={logo} alt="FastFare" width={40} height={40} />
-                        <div className="text-white font-extrabold text-lg">
-                            FastFare — Partner
-                        </div>
-                    </div>
+//     return (
+//         <header className="fixed inset-x-0 top-0 z-30">
+//             <div className="backdrop-blur-md bg-black/30 border-b border-indigo-700/20">
+//                 <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+//                     <div className="flex items-center gap-4">
+//                         <img src={logo} alt="FastFare" width={40} height={40} />
+//                         <div className="text-white font-extrabold text-lg">
+//                             FastFare — Partner
+//                         </div>
+//                     </div>
 
-                    {/* Desktop nav */}
-                    <nav className="hidden md:flex items-center gap-8">
-                        {links.map((l) => (
-                            <a
-                                key={l}
-                                href="#"
-                                className="text-sm text-slate-200 hover:text-white"
-                            >
-                                {l}
-                            </a>
-                        ))}
-                    </nav>
+//                     {/* Desktop nav */}
+//                     <nav className="hidden md:flex items-center gap-8">
+//                         {links.map((l) => (
+//                             <a
+//                                 key={l}
+//                                 href="#"
+//                                 className="text-sm text-slate-200 hover:text-white"
+//                             >
+//                                 {l}
+//                             </a>
+//                         ))}
+//                     </nav>
 
-                    {/* Desktop actions */}
-                    <div className="hidden md:flex items-center gap-4">
-                        <button
-                            className="text-slate-200 hover:text-white"
-                            onClick={() => (window.location.href = "/login")}
-                        >
-                            Sign in
-                        </button>
-                        <button
-                            className="px-4 py-2 rounded-lg bg-cyan-500/95 text-black font-semibold shadow-lg hover:scale-105 transition"
-                            onClick={() => (window.location.href = "/partner/tasks")}
-                        >
-                            Open Tasks
-                        </button>
-                    </div>
+//                     {/* Desktop actions */}
+//                     <div className="hidden md:flex items-center gap-4">
+//                         <button
+//                             className="text-slate-200 hover:text-white"
+//                             onClick={() => (window.location.href = "/login")}
+//                         >
+//                             Sign in
+//                         </button>
+//                         <button
+//                             className="px-4 py-2 rounded-lg bg-cyan-500/95 text-black font-semibold shadow-lg hover:scale-105 transition"
+//                             onClick={() => (window.location.href = "/partner/tasks")}
+//                         >
+//                             Open Tasks
+//                         </button>
+//                     </div>
 
-                    {/* Mobile hamburger */}
-                    <button
-                        className="md:hidden text-slate-200 text-2xl"
-                        onClick={() => setMobileOpen((prev) => !prev)}
-                        aria-label="Toggle navigation"
-                    >
-                        ☰
-                    </button>
-                </div>
+//                     {/* Mobile hamburger */}
+//                     <button
+//                         className="md:hidden text-slate-200 text-2xl"
+//                         onClick={() => setMobileOpen((prev) => !prev)}
+//                         aria-label="Toggle navigation"
+//                     >
+//                         ☰
+//                     </button>
+//                 </div>
 
-                {/* Mobile menu */}
-                {mobileOpen && (
-                    <div className="md:hidden border-t border-indigo-700/30 bg-black/70">
-                        <nav className="px-6 py-4 space-y-3">
-                            {links.map((l) => (
-                                <a
-                                    key={l}
-                                    href="#"
-                                    className="block text-sm text-slate-200 hover:text-white"
-                                >
-                                    {l}
-                                </a>
-                            ))}
+//                 {/* Mobile menu */}
+//                 {mobileOpen && (
+//                     <div className="md:hidden border-t border-indigo-700/30 bg-black/70">
+//                         <nav className="px-6 py-4 space-y-3">
+//                             {links.map((l) => (
+//                                 <a
+//                                     key={l}
+//                                     href="#"
+//                                     className="block text-sm text-slate-200 hover:text-white"
+//                                 >
+//                                     {l}
+//                                 </a>
+//                             ))}
 
-                            <div className="mt-4 space-y-2">
-                                <button
-                                    className="block w-full text-left text-slate-200 hover:text-white"
-                                    onClick={() => (window.location.href = "/login")}
-                                >
-                                    Sign in
-                                </button>
-                                <button
-                                    className="block w-full mt-1 px-4 py-2 rounded-lg bg-cyan-500/95 text-black font-semibold shadow-lg"
-                                    onClick={() => (window.location.href = "/partner/tasks")}
-                                >
-                                    Open Tasks
-                                </button>
-                            </div>
-                        </nav>
-                    </div>
-                )}
-            </div>
-        </header>
-    );
-};
+//                             <div className="mt-4 space-y-2">
+//                                 <button
+//                                     className="block w-full text-left text-slate-200 hover:text-white"
+//                                     onClick={() => (window.location.href = "/login")}
+//                                 >
+//                                     Sign in
+//                                 </button>
+//                                 <button
+//                                     className="block w-full mt-1 px-4 py-2 rounded-lg bg-cyan-500/95 text-black font-semibold shadow-lg"
+//                                     onClick={() => (window.location.href = "/partner/tasks")}
+//                                 >
+//                                     Open Tasks
+//                                 </button>
+//                             </div>
+//                         </nav>
+//                     </div>
+//                 )}
+//             </div>
+//         </header>
+//     );
+// };
 
 export default function PartnerDashboard(): JSX.Element | null {
     const [mounted, setMounted] = useState<boolean>(false);
@@ -158,12 +159,13 @@ export default function PartnerDashboard(): JSX.Element | null {
 
     return (
         <>
-            <NavBar />
+            {/* <NavBar /> */}
 
             <main className="pt-28 min-h-screen bg-gradient-to-br from-brand-900 via-slate-900 to-black text-white relative overflow-hidden">
                 <ParticleField />
 
                 <section className="container mx-auto px-6 pb-16 relative z-10">
+                    <Outlet/>
                     <div className="grid lg:grid-cols-3 gap-8 items-start">
                         {/* Left Column */}
                         <div className="lg:col-span-2 space-y-6">

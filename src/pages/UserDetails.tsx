@@ -76,7 +76,7 @@ export default function UserDetails() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="w-full border-b border-brand-200/60 bg-white/70 backdrop-blur sticky top-0 z-10">
+      {/* <header className="w-full border-b border-brand-200/60 bg-white/70 backdrop-blur sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <img src={logo} alt="FastFare" width={40} height={40} className="object-contain h-8 rounded-lg" />
@@ -89,7 +89,7 @@ export default function UserDetails() {
             <span className="text-brand-700 font-semibold">Step 2 of 2</span>
           </span>
         </div>
-      </header>
+      </header> */}
 
       <main className="flex-1 flex items-center justify-center px-4 py-10">
         <motion.div

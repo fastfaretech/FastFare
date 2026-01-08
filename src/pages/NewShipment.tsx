@@ -74,7 +74,7 @@ export default function NewShipment() {
     <div className="relative min-h-screen bg-slate-950 text-white overflow-hidden">
       <ParticleField />
 
-      <header className="fixed inset-x-0 top-0 z-30">
+      {/* <header className="fixed inset-x-0 top-0 z-30">
         <div className="backdrop-blur-md bg-black/30 border-b border-indigo-700/20">
           <div className="container mx-auto px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -90,9 +90,9 @@ export default function NewShipment() {
             </button>
           </div>
         </div>
-      </header>
+      </header> */}
 
-      <main className="pt-28 px-6 max-w-3xl mx-auto">
+      <main className="pt-4 px-6 max-w-3xl mx-auto">
         <h2 className="text-3xl font-bold text-cyan-400 mb-6">Book Your Shipment</h2>
         <p className="mb-6 text-slate-300">
           Fast, reliable delivery between Delhi and Jaipur

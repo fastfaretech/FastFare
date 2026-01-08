@@ -57,61 +57,6 @@ export default function NewPickup() {
     <div className="relative min-h-screen overflow-hidden bg-slate-950">
       <ParticleField />
 
-      <header className="fixed inset-x-0 top-0 z-30">
-        <div className="backdrop-blur-md bg-black/30 border-b border-indigo-700/20">
-          <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <img src={logo} alt="FastFare" width={40} height={40} />
-              <div className="text-white font-extrabold text-lg">FastFare — Partner</div>
-            </div>
-
-            {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-8">
-              {["Dashboard", "Tasks", "Collections"].map((l) => (
-                <a key={l} href="#" className="text-sm text-slate-200 hover:text-white">
-                  {l}
-                </a>
-              ))}
-            </nav>
-
-            <div className="flex items-center gap-4">
-              <button
-                className="text-slate-200 hover:text-white hidden md:inline"
-                onClick={() => (window.location.href = "/login")}
-              >
-                Sign in
-              </button>
-              <button
-                className="px-4 py-2 rounded-lg bg-cyan-500/95 text-black font-semibold shadow-lg hover:scale-105 transition"
-                onClick={() => (window.location.href = "/partner/tasks")}
-              >
-                Open Tasks
-              </button>
-            </div>
-
-            {/* Mobile Menu Button */}
-            <div className="md:hidden text-slate-200 cursor-pointer" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-              ☰
-            </div>
-          </div>
-
-          {/* Mobile Navigation */}
-          {isMenuOpen && (
-            <nav className="md:hidden bg-black/40 p-4">
-              {["Dashboard", "Tasks", "Collections"].map((l) => (
-                <a
-                  key={l}
-                  href="#"
-                  className="block text-sm text-slate-200 hover:text-white py-2"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {l}
-                </a>
-              ))}
-            </nav>
-          )}
-        </div>
-      </header>
 
       <main className="relative z-10 p-6 pt-28 max-w-3xl mx-auto">
         <h2 className="text-3xl font-bold text-cyan-400 mb-8">Incoming Shipments</h2>

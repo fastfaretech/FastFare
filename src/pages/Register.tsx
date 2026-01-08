@@ -113,7 +113,7 @@ export default function Register() {
                 </div>
             </div>
 
-            <header className="w-full border-b border-brand-200/60 bg-white/80 backdrop-blur-md sticky top-0 z-20">
+            {/* <header className="w-full border-b border-brand-200/60 bg-white/80 backdrop-blur-md sticky top-0 z-20">
                 <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <div className="h-9 w-9 rounded-2xl bg-brand-100 flex items-center justify-center shadow-sm">
@@ -124,7 +124,7 @@ export default function Register() {
                         </div>
                     </div>
                 </div>
-            </header>
+            </header> */}
 
             <main className="flex-1 flex items-center justify-center px-4 py-10 z-10">
                 <div className="max-w-6xl w-full flex flex-col md:flex-row gap-12">

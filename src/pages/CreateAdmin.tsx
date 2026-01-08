@@ -53,7 +53,7 @@ export default function CreateAdmin(): JSX.Element {
       <ParticleField />
 
       {/* NAVBAR */}
-      <header className="fixed inset-x-0 top-0 z-20">
+      {/* <header className="fixed inset-x-0 top-0 z-20">
         <div className="backdrop-blur-md bg-black/30 border-b border-indigo-700/20">
           <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -71,10 +71,10 @@ export default function CreateAdmin(): JSX.Element {
             </button>
           </div>
         </div>
-      </header>
+      </header> */}
 
       {/* MAIN FORM CARD */}
-      <main className="pt-28 relative z-10">
+      <main className="pt-2 relative z-10">
         <div className="max-w-xl mx-auto mt-10 p-10 bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl shadow-xl">
           <h2 className="text-3xl font-bold text-cyan-400 mb-8 text-center">Add New Admin</h2>
           <div className="space-y-6">

@@ -19,6 +19,7 @@ import {
     Mail,
     Globe,
 } from "lucide-react";
+import { Outlet } from "react-router-dom";
 
 // type LucideIcon = (props: React.SVGProps<SVGSVGElement>) => JSX.Element;
 
@@ -176,119 +177,119 @@ function LandingPage(): JSX.Element | null {
 
     if (!mounted) return null;
 
-    const NavBar: React.FC = () => {
-        const [mobileOpen, setMobileOpen] = useState<boolean>(false);
+    // const NavBar: React.FC = () => {
+    //     const [mobileOpen, setMobileOpen] = useState<boolean>(false);
 
-        return (
-            <header className="fixed inset-x-0 top-0 z-30">
-                <div className="backdrop-blur-md bg-black/30 border-b border-indigo-700/20">
-                    <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <img src={logo} alt="FastFare" width={40} height={40} />
-                            <div className="text-white font-extrabold text-lg">FastFare</div>
-                        </div>
+    //     return (
+    //         <header className="fixed inset-x-0 top-0 z-30">
+    //             <div className="backdrop-blur-md bg-black/30 border-b border-indigo-700/20">
+    //                 <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+    //                     <div className="flex items-center gap-4">
+    //                         <img src={logo} alt="FastFare" width={40} height={40} />
+    //                         <div className="text-white font-extrabold text-lg">FastFare</div>
+    //                     </div>
 
-                        {/* Desktop nav */}
-                        <nav className="hidden md:flex items-center gap-8">
-                            <a
-                                href="/"
-                                className="text-white underline underline-offset-8 decoration-cyan-400"
-                            >
-                                Home
-                            </a>
-                            <a
-                                href="/user/new-shipment"
-                                className="text-slate-200 hover:text-white"
-                            >
-                                Book Shipment
-                            </a>
-                            <a href="#" className="text-slate-200 hover:text-white">
-                                Track
-                            </a>
-                            <a href="#" className="text-slate-200 hover:text-white">
-                                Wallet
-                            </a>
-                            <a href="#" className="text-slate-200 hover:text-white">
-                                Pricing
-                            </a>
-                            <a href="#" className="text-slate-200 hover:text-white">
-                                Contact
-                            </a>
-                        </nav>
+    //                     {/* Desktop nav */}
+    //                     <nav className="hidden md:flex items-center gap-8">
+    //                         <a
+    //                             href="/"
+    //                             className="text-white underline underline-offset-8 decoration-cyan-400"
+    //                         >
+    //                             Home
+    //                         </a>
+    //                         <a
+    //                             href="/user/new-shipment"
+    //                             className="text-slate-200 hover:text-white"
+    //                         >
+    //                             Book Shipment
+    //                         </a>
+    //                         <a href="#" className="text-slate-200 hover:text-white">
+    //                             Track
+    //                         </a>
+    //                         <a href="#" className="text-slate-200 hover:text-white">
+    //                             Wallet
+    //                         </a>
+    //                         <a href="#" className="text-slate-200 hover:text-white">
+    //                             Pricing
+    //                         </a>
+    //                         <a href="#" className="text-slate-200 hover:text-white">
+    //                             Contact
+    //                         </a>
+    //                     </nav>
 
-                        {/* Desktop actions */}
-                        <div className="hidden md:flex items-center gap-4">
-                            <a
-                                href="/login"
-                                className="text-slate-200 hover:text-white"
-                            >
-                                Sign in
-                            </a>
-                            <a
-                                href="/register"
-                                className="px-4 py-2 rounded-lg bg-cyan-500/95 text-black font-semibold shadow-lg hover:scale-105 transition"
-                            >
-                                Get Started
-                            </a>
-                        </div>
+    //                     {/* Desktop actions */}
+    //                     <div className="hidden md:flex items-center gap-4">
+    //                         <a
+    //                             href="/login"
+    //                             className="text-slate-200 hover:text-white"
+    //                         >
+    //                             Sign in
+    //                         </a>
+    //                         <a
+    //                             href="/register"
+    //                             className="px-4 py-2 rounded-lg bg-cyan-500/95 text-black font-semibold shadow-lg hover:scale-105 transition"
+    //                         >
+    //                             Get Started
+    //                         </a>
+    //                     </div>
 
-                        {/* Mobile hamburger */}
-                        <button
-                            className="md:hidden text-slate-200 text-2xl"
-                            onClick={() => setMobileOpen((prev) => !prev)}
-                            aria-label="Toggle navigation"
-                        >
-                            ☰
-                        </button>
-                    </div>
+    //                     {/* Mobile hamburger */}
+    //                     <button
+    //                         className="md:hidden text-slate-200 text-2xl"
+    //                         onClick={() => setMobileOpen((prev) => !prev)}
+    //                         aria-label="Toggle navigation"
+    //                     >
+    //                         ☰
+    //                     </button>
+    //                 </div>
 
-                    {/* Mobile menu */}
-                    {mobileOpen && (
-                        <div className="md:hidden border-t border-indigo-700/30 bg-black/70">
-                            <nav className="px-6 py-4 space-y-3">
-                                <a href="/" className="block text-slate-200 hover:text-white">
-                                    Home
-                                </a>
-                                <a
-                                    href="/user/new-shipment"
-                                    className="block text-slate-200 hover:text-white"
-                                >
-                                    Book Shipment
-                                </a>
-                                <a href="#" className="block text-slate-200 hover:text-white">
-                                    Track
-                                </a>
-                                <a href="#" className="block text-slate-200 hover:text-white">
-                                    Wallet
-                                </a>
-                                <a href="#" className="block text-slate-200 hover:text-white">
-                                    Pricing
-                                </a>
-                                <a href="#" className="block text-slate-200 hover:text-white">
-                                    Contact
-                                </a>
+    //                 {/* Mobile menu */}
+    //                 {mobileOpen && (
+    //                     <div className="md:hidden border-t border-indigo-700/30 bg-black/70">
+    //                         <nav className="px-6 py-4 space-y-3">
+    //                             <a href="/" className="block text-slate-200 hover:text-white">
+    //                                 Home
+    //                             </a>
+    //                             <a
+    //                                 href="/user/new-shipment"
+    //                                 className="block text-slate-200 hover:text-white"
+    //                             >
+    //                                 Book Shipment
+    //                             </a>
+    //                             <a href="#" className="block text-slate-200 hover:text-white">
+    //                                 Track
+    //                             </a>
+    //                             <a href="#" className="block text-slate-200 hover:text-white">
+    //                                 Wallet
+    //                             </a>
+    //                             <a href="#" className="block text-slate-200 hover:text-white">
+    //                                 Pricing
+    //                             </a>
+    //                             <a href="#" className="block text-slate-200 hover:text-white">
+    //                                 Contact
+    //                             </a>
 
-                                <hr className="my-3 border-indigo-700/40" />
+    //                             <hr className="my-3 border-indigo-700/40" />
 
-                                <a
-                                    href="/login"
-                                    className="block text-slate-200 hover:text-white mb-2"
-                                >
-                                    Sign in
-                                </a>
-                                <a
-                                    href="/register"
-                                    className="block px-4 py-2 rounded-lg bg-cyan-500/95 text-black font-semibold shadow-lg text-center"
-                                >
-                                    Get Started
-                                </a>
-                            </nav>
-                        </div>
-                    )}
-                </div>
-            </header>
-        );
-    };
+    //                             <a
+    //                                 href="/login"
+    //                                 className="block text-slate-200 hover:text-white mb-2"
+    //                             >
+    //                                 Sign in
+    //                             </a>
+    //                             <a
+    //                                 href="/register"
+    //                                 className="block px-4 py-2 rounded-lg bg-cyan-500/95 text-black font-semibold shadow-lg text-center"
+    //                             >
+    //                                 Get Started
+    //                             </a>
+    //                         </nav>
+    //                     </div>
+    //                 )}
+    //             </div>
+    //         </header>
+    //     );
+    // };
 
     const GLASS_CARD_DARK =
         "glass-card p-8 rounded-3xl border border-indigo-600/20 backdrop-blur-xl shadow-2xl bg-indigo-900/6 text-white";
@@ -299,13 +300,14 @@ function LandingPage(): JSX.Element | null {
 
     return (
         <>
-            <NavBar />
+            {/* <NavBar /> */}
 
             {/* HERO */}
             <section className="relative min-h-screen flex items-center overflow-hidden bg-gradient-to-br from-brand-900 via-slate-900 to-black text-white pt-24">
                 <ParticleField />
 
                 <div className="container mx-auto px-6 relative z-10">
+                    <Outlet/>
                     <div className="grid lg:grid-cols-2 gap-12 items-center">
                         {/* Left column */}
                         <motion.div
