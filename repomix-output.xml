@@ -997,77 +997,6 @@ const UserLoginScreen: React.FC = () => {
 export default UserLoginScreen;
 </file>
 
-<file path="app/faqs.tsx">
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-
-interface FAQItemProps {
-  question: string;
-  answer: string;
-}
-
-const FAQItem: React.FC<FAQItemProps> = ({ question, answer }) => {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <View className="mb-3 border-b border-gray-200">
-      <TouchableOpacity
-        onPress={() => setIsOpen(!isOpen)}
-        className="flex flex-row justify-between items-center py-3"
-      >
-        <Text className="text-base font-bold text-gray-800">{question}</Text>
-        <Ionicons
-          name={isOpen ? 'chevron-up' : 'chevron-down'}
-          size={20}
-          color="#000"
-        />
-      </TouchableOpacity>
-      {isOpen && (
-        <View className="mt-2 mb-3">
-          <Text className="text-sm text-gray-600">{answer}</Text>
-        </View>
-      )}
-    </View>
-  );
-};
-
-const FAQsScreen: React.FC = () => {
-  const faqs = [
-    {
-      question: 'How do I get assigned shipments?',
-      answer: 'Shipments are assigned based on your availability and proximity to the pickup location. Make sure your app is active and your location is updated.',
-    },
-    {
-      question: 'What documents do I need to upload as a driver?',
-      answer: 'You need to upload your driving license, vehicle registration, and insurance documents during registration.',
-    },
-    {
-      question: 'How do I update my vehicle details?',
-      answer: 'Go to your profile section and select "Vehicle Details" to update or add new vehicle information.',
-    },
-    {
-      question: 'What happens if I am unable to complete a shipment?',
-      answer: 'If you cannot complete a shipment, notify support immediately. You may be penalized for repeated cancellations without valid reasons.',
-    },
-    {
-      question: 'How do I receive payment for completed shipments?',
-      answer: 'Payments are processed automatically after successful delivery and are credited to your linked bank account within 2-3 business days.',
-    },
-  ];
-
-  return (
-    <View className="p-4 bg-white">
-      {faqs.map((faq, index) => (
-        <FAQItem key={index} question={faq.question} answer={faq.answer} />
-      ))}
-    </View>
-  );
-};
-
-export default FAQsScreen;
-</file>
-
 <file path="app/modal.tsx">
 import { Link } from 'expo-router';
 import { StyleSheet } from 'react-native';
@@ -1098,404 +1027,6 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
   },
 });
-</file>
-
-<file path="app/ShipmentDetails.tsx">
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ActivityIndicator,
-  ScrollView,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams, router } from "expo-router";
-import * as Location from "expo-location";
-
-type ShipmentStatus = "confirmed" | "rejected" | "pending" | "in-transit" | "delivered" | "cancelled";
-
-interface Shipment {
-  _id: string;
-  shipmentId: string;
-  pickupDetails: {
-    latitude: number;
-    longitude: number;
-  };
-  deliveryDetails: {
-    latitude: number;
-    longitude: number;
-  };
-  quantity: number;
-  status: ShipmentStatus;
-  createdAt: string;
-  DriverId?: string;
-}
-
-interface DriverDetails {
-  name: string;
-  contactNumber: number;
-  licenseNumber: string;
-  vehicleNumber: string;
-  status: string;
-}
-
-const API_BASE_URL = "http://172.27.25.158:3000";
-
-async function coordsToAddressString(lat: number, lng: number) {
-  try {
-    const res = await Location.reverseGeocodeAsync({
-      latitude: lat,
-      longitude: lng,
-    });
-
-    if (!res.length) return "";
-
-    const addr = res[0];
-    return [
-      addr.name,
-      addr.street,
-      addr.city,
-      addr.region,
-      addr.postalCode,
-      addr.country,
-    ]
-      .filter(Boolean)
-      .join(", ");
-  } catch (e) {
-    console.log("reverseGeocode error", e);
-    return "";
-  }
-}
-
-export default function ShipmentDetailsScreen() {
-  const { shipmentId, token } = useLocalSearchParams<{
-    shipmentId?: string;
-    token?: string;
-  }>();
-
-  const [shipment, setShipment] = useState<Shipment | null>(null);
-  const [driverDetails, setDriverDetails] = useState<DriverDetails | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [pickupAddress, setPickupAddress] = useState("");
-  const [dropAddress, setDropAddress] = useState("");
-
-  useEffect(() => {
-    console.log("DETAILS params:", { shipmentId, token });
-    if (!shipmentId || !token) {
-      setError("Missing shipment or token");
-      return;
-    }
-    fetchShipment(shipmentId, token);
-  }, [shipmentId, token]);
-
-  const fetchShipment = async (id: string, jwt: string) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      console.log("Fetching details for id:", id);
-
-      const res = await fetch(
-        `${API_BASE_URL}/api/v1/user/order/get/${id}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${jwt}`,
-          },
-        }
-      );
-
-      const text = await res.text();
-      console.log("DETAILS STATUS", res.status, "BODY", text);
-
-      if (!res.ok) {
-        setError("Shipment not found");
-        return;
-      }
-
-      const data = JSON.parse(text);
-      const s: Shipment = data.shipment;
-      setShipment(s);
-
-      // Fetch driver details if DriverId is present
-      if (s.DriverId) {
-        const driverRes = await fetch(
-          `${API_BASE_URL}/api/v1/driver/details/${s.DriverId}`,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${jwt}`,
-            },
-          }
-        );
-
-        if (driverRes.ok) {
-          const driverData = await driverRes.json();
-          setDriverDetails(driverData.details);
-        }
-      }
-
-      // Fire reverse‑geocoding in parallel
-      coordsToAddressString(
-        s.pickupDetails.latitude,
-        s.pickupDetails.longitude
-      ).then(setPickupAddress);
-      coordsToAddressString(
-        s.deliveryDetails.latitude,
-        s.deliveryDetails.longitude
-      ).then(setDropAddress);
-    } catch (e: any) {
-      setError(e.message ?? "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const renderStatusBadge = (status: ShipmentStatus) => {
-    let bg = "bg-amber-200";
-    let text = "text-slate-800";
-    if (status === "in-transit") {
-      bg = "bg-blue-400";
-      text = "text-white";
-    } else if (status === "delivered") {
-      bg = "bg-green-500";
-      text = "text-white";
-    } else if (status === "cancelled" || status === "rejected") {
-      bg = "bg-red-500";
-      text = "text-white";
-    } else if (status === "confirmed") {
-      bg = "bg-green-200";
-      text = "text-slate-800";
-    }
-
-    return (
-      <View className={`px-3 py-1 rounded-full ${bg}`}>
-        <Text className={`text-xs font-semibold ${text}`}>
-          {status.toUpperCase()}
-        </Text>
-      </View>
-    );
-  };
-
-  const dateStr = shipment
-    ? new Date(shipment.createdAt).toLocaleDateString()
-    : "";
-  const timeStr = shipment
-    ? new Date(shipment.createdAt).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "";
-
-  return (
-    <SafeAreaView className="flex-1 bg-slate-100 dark:bg-slate-900">
-      {/* Header */}
-      <View className="bg-blue-600 px-4 py-4 flex-row items-center justify-between rounded-b-3xl">
-        <View className="flex-row items-center">
-          <TouchableOpacity
-            onPress={() => router.back()}
-            className="w-9 h-9 rounded-full bg-white/10 items-center justify-center mr-3"
-          >
-            <Text className="text-white text-xl">←</Text>
-          </TouchableOpacity>
-          <View>
-            <Text className="text-white text-lg font-semibold">
-              Shipment Details
-            </Text>
-            <Text className="text-white/90 text-sm">
-              Order #{shipment?.shipmentId ?? shipmentId}
-            </Text>
-          </View>
-        </View>
-        {shipment && renderStatusBadge(shipment.status)}
-      </View>
-
-      {loading && (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator />
-        </View>
-      )}
-
-      {!loading && error && (
-        <View className="flex-1 items-center justify-center px-6">
-          <Text className="text-red-500 text-base text-center">
-            {error}
-          </Text>
-        </View>
-      )}
-
-      {!loading && !error && shipment && (
-        <ScrollView
-          className="flex-1 px-4 pt-3"
-          contentContainerStyle={{ paddingBottom: 24 }}
-        >
-          {/* Customer information (dummy) */}
-          <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-3 shadow-sm">
-            <Text className="text-sm font-semibold text-slate-500 dark:text-slate-300 mb-3">
-              Customer Information
-            </Text>
-            <Text className="text-base text-slate-800 dark:text-slate-50">
-              John Doe
-            </Text>
-            <Text className="text-sm text-slate-600 dark:text-slate-300 mt-2">
-              +1 (555) 123-4567
-            </Text>
-            <Text className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-              {shipment.quantity} items
-            </Text>
-          </View>
-
-          {/* Pickup */}
-          <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-3 shadow-sm">
-            <View className="flex-row justify-between items-center mb-2">
-              <Text className="text-sm font-semibold text-slate-500 dark:text-slate-300">
-                Pickup Location
-              </Text>
-              <Text
-                className="text-sm text-blue-600 font-medium"
-                onPress={() =>
-                  router.push({
-                    pathname: "/qr-scan",
-                    params: { context: "pickup" },
-                  })
-                }
-              >
-                Scan QR
-              </Text>
-            </View>
-            <Text className="text-sm text-slate-700 dark:text-slate-100 mb-2">
-              {pickupAddress || "Resolving pickup address..."}
-            </Text>
-            <Text className="text-xs text-slate-500 dark:text-slate-300">
-              {shipment.pickupDetails.latitude.toFixed(6)},{" "}
-              {shipment.pickupDetails.longitude.toFixed(6)}
-            </Text>
-          </View>
-
-          {/* Drop */}
-          <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-3 shadow-sm">
-            <View className="flex-row justify-between items-center mb-2">
-              <Text className="text-sm font-semibold text-slate-500 dark:text-slate-300">
-                Drop Location
-              </Text>
-              <Text
-                className="text-sm text-blue-600 font-medium"
-                onPress={() =>
-                  router.push({
-                    pathname: "/qr-scan",
-                    params: { context: "drop" },
-                  })
-                }
-              >
-                Scan QR
-              </Text>
-            </View>
-            <Text className="text-sm text-slate-700 dark:text-slate-100 mb-2">
-              {dropAddress || "Resolving drop address..."}
-            </Text>
-            <Text className="text-xs text-slate-500 dark:text-slate-300">
-              {shipment.deliveryDetails.latitude.toFixed(6)},{" "}
-              {shipment.deliveryDetails.longitude.toFixed(6)}
-            </Text>
-          </View>
-
-          {/* Driver details */}
-          {shipment.DriverId && driverDetails && (
-            <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-3 shadow-sm">
-              <Text className="text-sm font-semibold text-slate-500 dark:text-slate-300 mb-2">
-                Driver Details
-              </Text>
-              <Text className="text-base text-slate-800 dark:text-slate-50">
-                Name: <Text className="font-semibold">{driverDetails.name}</Text>
-              </Text>
-              <Text className="text-base text-slate-800 dark:text-slate-50 mt-1">
-                Contact Number: <Text className="font-semibold">{driverDetails.contactNumber}</Text>
-              </Text>
-              <Text className="text-base text-slate-800 dark:text-slate-50 mt-1">
-                License Number: <Text className="font-semibold">{driverDetails.licenseNumber}</Text>
-              </Text>
-              <Text className="text-base text-slate-800 dark:text-slate-50 mt-1">
-                Vehicle Number: <Text className="font-semibold">{driverDetails.vehicleNumber}</Text>
-              </Text>
-              <Text className="text-base text-slate-800 dark:text-slate-50 mt-1">
-                Status: <Text className="font-semibold">{driverDetails.status}</Text>
-              </Text>
-            </View>
-          )}
-
-          {/* Buttons */}
-          <TouchableOpacity className="bg-blue-600 rounded-full py-3.5 items-center mb-2">
-            <Text
-              className="text-white font-semibold text-base"
-              onPress={() =>
-                router.push({
-                  pathname: "/MapScreen",
-                  params: {
-                    shipmentId: shipment.shipmentId,
-                    token,
-                  },
-                })
-              }
-            >
-              View Route on Map
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity className="bg-slate-200 dark:bg-slate-700 rounded-full py-3.5 items-center mb-3">
-            <Text className="text-slate-700 dark:text-slate-50 font-semibold text-base">
-              Download Manifest
-            </Text>
-          </TouchableOpacity>
-
-          {/* Timeline */}
-          <View className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm">
-            <Text className="text-sm font-semibold text-slate-500 dark:text-slate-300 mb-3">
-              Shipment Timeline
-            </Text>
-
-            <View className="mb-3 flex-row items-start">
-              <View className="w-2 h-2 rounded-full bg-green-500 mt-1 mr-3" />
-              <View>
-                <Text className="text-sm text-slate-800 dark:text-slate-50 font-medium">
-                  Order Created
-                </Text>
-                <Text className="text-xs text-slate-500 dark:text-slate-300">
-                  {dateStr} · {timeStr}
-                </Text>
-              </View>
-            </View>
-
-            <View className="mb-3 flex-row items-start">
-              <View className="w-2 h-2 rounded-full bg-green-500 mt-1 mr-3" />
-              <View>
-                <Text className="text-sm text-slate-800 dark:text-slate-50 font-medium">
-                  Assigned to Driver
-                </Text>
-                <Text className="text-xs text-slate-500 dark:text-slate-300">
-                  {dateStr} · {timeStr}
-                </Text>
-              </View>
-            </View>
-
-            <View className="flex-row items-start opacity-80">
-              <View className="w-2 h-2 rounded-full bg-slate-400 mt-1 mr-3" />
-              <View>
-                <Text className="text-sm text-slate-800 dark:text-slate-50 font-medium">
-                  Scheduled Pickup
-                </Text>
-                <Text className="text-xs text-slate-500 dark:text-slate-300">
-                  {dateStr} · 2:00 PM
-                </Text>
-              </View>
-            </View>
-          </View>
-        </ScrollView>
-      )}
-    </SafeAreaView>
-  );
-}
 </file>
 
 <file path="tailwind.config.js">
@@ -1922,6 +1453,626 @@ export default function ProfileScreen() {
 }
 </file>
 
+<file path="app/faqs.tsx">
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+interface FAQItemProps {
+  question: string;
+  answer: string;
+}
+
+const FAQItem: React.FC<FAQItemProps> = ({ question, answer }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <View className="mb-3 border-b border-gray-200">
+      <TouchableOpacity
+        onPress={() => setIsOpen(!isOpen)}
+        className="flex flex-row justify-between items-center py-3"
+      >
+        <Text className="text-base font-bold text-gray-800 dark:text-slate-100">{question}</Text>
+        <Ionicons
+          name={isOpen ? 'chevron-up' : 'chevron-down'}
+          size={20}
+          color="#000"
+        />
+      </TouchableOpacity>
+      {isOpen && (
+        <View className="mt-2 mb-3">
+          <Text className="text-sm text-gray-600 dark:text-slate-200">{answer}</Text>
+        </View>
+      )}
+    </View>
+  );
+};
+
+const FAQsScreen: React.FC = () => {
+  const faqs = [
+    {
+      question: 'How do I get assigned shipments?',
+      answer: 'Shipments are assigned based on your availability and proximity to the pickup location. Make sure your app is active and your location is updated.',
+    },
+    {
+      question: 'What documents do I need to upload as a driver?',
+      answer: 'You need to upload your driving license, vehicle registration, and insurance documents during registration.',
+    },
+    {
+      question: 'How do I update my vehicle details?',
+      answer: 'Go to your profile section and select "Vehicle Details" to update or add new vehicle information.',
+    },
+    {
+      question: 'What happens if I am unable to complete a shipment?',
+      answer: 'If you cannot complete a shipment, notify support immediately. You may be penalized for repeated cancellations without valid reasons.',
+    },
+    {
+      question: 'How do I receive payment for completed shipments?',
+      answer: 'Payments are processed automatically after successful delivery and are credited to your linked bank account within 2-3 business days.',
+    },
+  ];
+
+  return (
+    <SafeAreaView className="flex-1 bg-slate-100 dark:bg-slate-900">
+    <View className="p-4 bg-white dark:bg-slate-700 dark:text-slate-400">
+      {faqs.map((faq, index) => (
+        <FAQItem key={index} question={faq.question} answer={faq.answer} />
+      ))}
+    </View>
+    </SafeAreaView>
+  );
+};
+
+export default FAQsScreen;
+</file>
+
+<file path="app/ShipmentDetails.tsx">
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ActivityIndicator,
+  ScrollView,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useLocalSearchParams, router } from "expo-router";
+import * as Location from "expo-location";
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from "expo-file-system/legacy";
+
+const { StorageAccessFramework } = FileSystem;
+
+
+type ShipmentStatus = "confirmed" | "rejected" | "pending" | "in-transit" | "delivered" | "cancelled";
+
+interface Shipment {
+  _id: string;
+  shipmentId: string;
+  pickupDetails: {
+    latitude: number;
+    longitude: number;
+  };
+  deliveryDetails: {
+    latitude: number;
+    longitude: number;
+  };
+  quantity: number;
+  status: ShipmentStatus;
+  createdAt: string;
+  DriverId?: string;
+}
+
+interface DriverDetails {
+  name: string;
+  contactNumber: number;
+  licenseNumber: string;
+  vehicleNumber: string;
+  status: string;
+}
+
+const API_BASE_URL = "http://172.27.25.158:3000";
+
+async function coordsToAddressString(lat: number, lng: number) {
+  try {
+    const res = await Location.reverseGeocodeAsync({
+      latitude: lat,
+      longitude: lng,
+    });
+
+    if (!res.length) return "";
+
+    const addr = res[0];
+    return [
+      addr.name,
+      addr.street,
+      addr.city,
+      addr.region,
+      addr.postalCode,
+      addr.country,
+    ]
+      .filter(Boolean)
+      .join(", ");
+  } catch (e) {
+    console.log("reverseGeocode error", e);
+    return "";
+  }
+}
+
+export default function ShipmentDetailsScreen() {
+  const { shipmentId, token } = useLocalSearchParams<{
+    shipmentId?: string;
+    token?: string;
+  }>();
+
+  const [shipment, setShipment] = useState<Shipment | null>(null);
+  const [driverDetails, setDriverDetails] = useState<DriverDetails | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pickupAddress, setPickupAddress] = useState("");
+  const [dropAddress, setDropAddress] = useState("");
+
+  useEffect(() => {
+    if (!shipmentId || !token) {
+      setError("Missing shipment or token");
+      return;
+    }
+    fetchShipment(shipmentId, token);
+  }, [shipmentId, token]);
+
+  const fetchShipment = async (id: string, jwt: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const res = await fetch(`${API_BASE_URL}/api/v1/user/order/get/${id}`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+        },
+      });
+
+      const text = await res.text();
+      if (!res.ok) {
+        setError("Shipment not found");
+        return;
+      }
+
+      const data = JSON.parse(text);
+      const s: Shipment = data.shipment;
+      setShipment(s);
+
+      if (s.DriverId) {
+        const driverRes = await fetch(
+          `${API_BASE_URL}/api/v1/driver/details/${s.DriverId}`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${jwt}`,
+            },
+          }
+        );
+
+        if (driverRes.ok) {
+          const driverData = await driverRes.json();
+          setDriverDetails(driverData.details);
+        }
+      }
+
+      coordsToAddressString(s.pickupDetails.latitude, s.pickupDetails.longitude).then(setPickupAddress);
+      coordsToAddressString(s.deliveryDetails.latitude, s.deliveryDetails.longitude).then(setDropAddress);
+    } catch (e: any) {
+      setError(e.message ?? "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderStatusBadge = (status: ShipmentStatus) => {
+    let bg = "bg-amber-200";
+    let text = "text-slate-800";
+    if (status === "in-transit") {
+      bg = "bg-blue-400";
+      text = "text-white";
+    } else if (status === "delivered") {
+      bg = "bg-green-500";
+      text = "text-white";
+    } else if (status === "cancelled" || status === "rejected") {
+      bg = "bg-red-500";
+      text = "text-white";
+    } else if (status === "confirmed") {
+      bg = "bg-green-200";
+      text = "text-slate-800";
+    }
+
+    return (
+      <View className={`px-3 py-1 rounded-full ${bg}`}>
+        <Text className={`text-xs font-semibold ${text}`}>
+          {status.toUpperCase()}
+        </Text>
+      </View>
+    );
+  };
+
+  const dateStr = shipment ? new Date(shipment.createdAt).toLocaleDateString() : "";
+  const timeStr = shipment
+    ? new Date(shipment.createdAt).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+    : "";
+
+    const downloadManifest = async () => {
+      if (!shipment) return;
+  
+      const html = `
+        <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <style>
+            body { font-family: Arial; padding: 20px; color: #000; }
+            .heading { text-align:center; font-size: 22px; font-weight: bold; }
+            .subheading { text-align:center; margin-top: 4px; font-size: 12px; }
+            .row { display: flex; justify-content: space-between; width: 100%; }
+            .box { border: 1px solid #000; padding: 10px; width: 48%; }
+            .manifest-box { border: 1px solid #000; padding: 10px; margin-top: 12px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+            th, td { border: 1px solid #000; padding: 6px; text-align: left; }
+            .footer-box { border: 1px solid #000; padding: 10px; margin-top: 14px; font-size: 13px; }
+            .small { font-size: 12px; }
+            .center { text-align: center; }
+          </style>
+        </head>
+        <body>
+          <div class="heading">Shipment Manifest</div>
+          <div class="subheading">Generated on: ${dateStr} ${timeStr}</div>
+          <div class="row">
+            <div class="box">
+              <strong>Seller:</strong> TRUSTin.ONLINE<br/>
+              <strong>Contact:</strong> 7073998855
+            </div>
+            <div class="box">
+              <strong>Courier:</strong> Shadowfax Surface
+            </div>
+          </div>
+          <div class="manifest-box">
+            <strong>Manifest ID:</strong> ${shipment.shipmentId}<br/>
+            <strong>Total shipments to dispatch:</strong> 1
+          </div>
+          <table>
+            <tr>
+              <th>S.No</th>
+              <th>Order No</th>
+              <th>Contents</th>
+              <th>Status</th>
+            </tr>
+            <tr>
+              <td>1</td>
+              <td>${shipment.shipmentId}</td>
+              <td>${shipment.quantity} items</td>
+              <td>${shipment.status}</td>
+            </tr>
+          </table>
+          <div class="footer-box">
+            <strong>To Be Filled By Courier Executive</strong><br/><br/>
+            Pick up time: ____________
+            Total items picked: ____________<br/><br/>
+            FE Name: ____________ <br/>
+            FE Phone: ____________ <br/><br/>
+            Seller Signature: ____________________ <br/>
+            Courier Signature: ____________________
+          </div>
+          <p class="small">Pickup Address:<br/>${pickupAddress || "Not available"}</p>
+          <p class="center small">This is a system generated document</p>
+        </body>
+        </html>
+      `;
+  
+      try {
+        const { uri } = await Print.printToFileAsync({
+          html,
+          margins: { top: 10, bottom: 10, left: 10, right: 10 },
+        });
+  
+        const fileName = `Manifest_${shipment.shipmentId}.pdf`;
+  
+        // Ask user to choose Downloads or any folder
+        const permissions =
+          await StorageAccessFramework.requestDirectoryPermissionsAsync();
+  
+        if (!permissions.granted) {
+          alert("You must select a folder to save the PDF");
+          return;
+        }
+  
+        const base64 = await FileSystem.readAsStringAsync(uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+  
+        const fileUri = await StorageAccessFramework.createFileAsync(
+          permissions.directoryUri,
+          fileName,
+          "application/pdf"
+        );
+  
+        await FileSystem.writeAsStringAsync(fileUri, base64, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+  
+        console.log("Saved to:", fileUri);
+        alert("PDF saved successfully 🎉");
+  
+      } catch (err) {
+        console.error("Error generating PDF:", err);
+      }
+    };
+
+
+return (
+  <SafeAreaView className="flex-1 bg-slate-100 dark:bg-slate-900">
+    {/* Header */}
+    <View className="bg-blue-600 px-4 py-4 flex-row items-center justify-between rounded-b-3xl">
+      <View className="flex-row items-center">
+        <TouchableOpacity
+          onPress={() => router.back()}
+          className="w-9 h-9 rounded-full bg-white/10 items-center justify-center mr-3"
+        >
+          <Text className="text-white text-xl">←</Text>
+        </TouchableOpacity>
+        <View>
+          <Text className="text-white text-lg font-semibold">
+            Shipment Details
+          </Text>
+          <Text className="text-white/90 text-sm">
+            Order #{shipment?.shipmentId ?? shipmentId}
+          </Text>
+        </View>
+      </View>
+      {shipment && renderStatusBadge(shipment.status)}
+    </View>
+
+    {loading && (
+      <View className="flex-1 items-center justify-center">
+        <ActivityIndicator />
+      </View>
+    )}
+
+    {!loading && error && (
+      <View className="flex-1 items-center justify-center px-6">
+        <Text className="text-red-500 text-base text-center">
+          {error}
+        </Text>
+      </View>
+    )}
+
+    {!loading && !error && shipment && (
+      <ScrollView
+        className="flex-1 px-4 pt-3"
+        contentContainerStyle={{ paddingBottom: 24 }}
+      >
+        {/* Customer information (dummy) */}
+        <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-3 shadow-sm">
+          <Text className="text-sm font-semibold text-slate-500 dark:text-slate-300 mb-3">
+            Customer Information
+          </Text>
+          <Text className="text-base text-slate-800 dark:text-slate-50">
+            John Doe
+          </Text>
+          <Text className="text-sm text-slate-600 dark:text-slate-300 mt-2">
+            +1 (555) 123-4567
+          </Text>
+          <Text className="text-sm text-slate-600 dark:text-slate-300 mt-1">
+            {shipment.quantity} items
+          </Text>
+        </View>
+
+        {/* Pickup */}
+        <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-3 shadow-sm">
+          <View className="flex-row justify-between items-center mb-2">
+            <Text className="text-sm font-semibold text-slate-500 dark:text-slate-300">
+              Pickup Location
+            </Text>
+            <Text
+              className="text-sm text-blue-600 font-medium"
+              onPress={() =>
+                router.push({
+                  pathname: "/qr-scan",
+                  params: { context: "pickup" },
+                })
+              }
+            >
+              Scan QR
+            </Text>
+          </View>
+          <Text className="text-sm text-slate-700 dark:text-slate-100 mb-2">
+            {pickupAddress || "Resolving pickup address..."}
+          </Text>
+          <Text className="text-xs text-slate-500 dark:text-slate-300">
+            {shipment.pickupDetails.latitude.toFixed(6)},{" "}
+            {shipment.pickupDetails.longitude.toFixed(6)}
+          </Text>
+        </View>
+
+        {/* Drop */}
+        <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-3 shadow-sm">
+          <View className="flex-row justify-between items-center mb-2">
+            <Text className="text-sm font-semibold text-slate-500 dark:text-slate-300">
+              Drop Location
+            </Text>
+            <Text
+              className="text-sm text-blue-600 font-medium"
+              onPress={() =>
+                router.push({
+                  pathname: "/qr-scan",
+                  params: { context: "drop" },
+                })
+              }
+            >
+              Scan QR
+            </Text>
+          </View>
+          <Text className="text-sm text-slate-700 dark:text-slate-100 mb-2">
+            {dropAddress || "Resolving drop address..."}
+          </Text>
+          <Text className="text-xs text-slate-500 dark:text-slate-300">
+            {shipment.deliveryDetails.latitude.toFixed(6)},{" "}
+            {shipment.deliveryDetails.longitude.toFixed(6)}
+          </Text>
+        </View>
+
+        {/* Driver details */}
+        {shipment.DriverId && driverDetails && (
+          <View className="bg-white dark:bg-slate-800 rounded-xl p-4 mb-3 shadow-sm">
+            <Text className="text-sm font-semibold text-slate-500 dark:text-slate-300 mb-2">
+              Driver Details
+            </Text>
+            <Text className="text-base text-slate-800 dark:text-slate-50">
+              Name: <Text className="font-semibold">{driverDetails.name}</Text>
+            </Text>
+            <Text className="text-base text-slate-800 dark:text-slate-50 mt-1">
+              Contact Number: <Text className="font-semibold">{driverDetails.contactNumber}</Text>
+            </Text>
+            <Text className="text-base text-slate-800 dark:text-slate-50 mt-1">
+              License Number: <Text className="font-semibold">{driverDetails.licenseNumber}</Text>
+            </Text>
+            <Text className="text-base text-slate-800 dark:text-slate-50 mt-1">
+              Vehicle Number: <Text className="font-semibold">{driverDetails.vehicleNumber}</Text>
+            </Text>
+            <Text className="text-base text-slate-800 dark:text-slate-50 mt-1">
+              Status: <Text className="font-semibold">{driverDetails.status}</Text>
+            </Text>
+          </View>
+        )}
+
+        {/* Buttons */}
+        <TouchableOpacity className="bg-blue-600 rounded-full py-3.5 items-center mb-2">
+          <Text
+            className="text-white font-semibold text-base"
+            onPress={() =>
+              router.push({
+                pathname: "/MapScreen",
+                params: {
+                  shipmentId: shipment.shipmentId,
+                  token,
+                },
+              })
+            }
+          >
+            View Route on Map
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          className="bg-slate-200 dark:bg-slate-700 rounded-full py-3.5 items-center mb-3"
+          onPress={downloadManifest}
+        >
+          <Text className="text-slate-700 dark:text-slate-50 font-semibold text-base">
+            Download Manifest
+          </Text>
+        </TouchableOpacity>
+
+        {/* Timeline */}
+        <View className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm">
+          <Text className="text-sm font-semibold text-slate-500 dark:text-slate-300 mb-3">
+            Shipment Timeline
+          </Text>
+
+          <View className="mb-3 flex-row items-start">
+            <View className="w-2 h-2 rounded-full bg-green-500 mt-1 mr-3" />
+            <View>
+              <Text className="text-sm text-slate-800 dark:text-slate-50 font-medium">
+                Order Created
+              </Text>
+              <Text className="text-xs text-slate-500 dark:text-slate-300">
+                {dateStr} · {timeStr}
+              </Text>
+            </View>
+          </View>
+
+          <View className="mb-3 flex-row items-start">
+            <View className="w-2 h-2 rounded-full bg-green-500 mt-1 mr-3" />
+            <View>
+              <Text className="text-sm text-slate-800 dark:text-slate-50 font-medium">
+                Assigned to Driver
+              </Text>
+              <Text className="text-xs text-slate-500 dark:text-slate-300">
+                {dateStr} · {timeStr}
+              </Text>
+            </View>
+          </View>
+
+          <View className="flex-row items-start opacity-80">
+            <View className="w-2 h-2 rounded-full bg-slate-400 mt-1 mr-3" />
+            <View>
+              <Text className="text-sm text-slate-800 dark:text-slate-50 font-medium">
+                Scheduled Pickup
+              </Text>
+              <Text className="text-xs text-slate-500 dark:text-slate-300">
+                {dateStr} · 2:00 PM
+              </Text>
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+    )}
+  </SafeAreaView>
+);
+}
+</file>
+
+<file path="app/(tabs)/_layout.tsx">
+import { Tabs } from 'expo-router';
+import React from 'react';
+import { Text } from 'react-native';
+
+import { HapticTab } from '@/components/haptic-tab';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+
+export const unstable_settings = {
+  initialRouteName: 'MyShipments',
+};
+
+export default function TabLayout() {
+  const colorScheme = useColorScheme();
+
+  return (
+    <Tabs
+      initialRouteName="MyShipments"
+      screenOptions={{
+        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        headerShown: false,
+        tabBarButton: HapticTab,
+      }}
+    >
+      <Tabs.Screen
+        name="MyShipments"
+        options={{
+          title: 'My Shipments',
+          tabBarIcon: ({ color }) => <Text style={{ color }}>📦</Text>,
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color }) => <Text style={{ color }}>👤</Text>,
+        }}
+      />
+      <Tabs.Screen
+        name="Settings"
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({ color }) => <Text style={{ color }}>⚙️</Text>,
+        }}
+      />
+    </Tabs>
+  );
+}
+</file>
+
 <file path="app/MapScreen.tsx">
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Text } from "react-native";
@@ -2111,223 +2262,6 @@ export default function MapScreen() {
         />
       </MapView>
     </ThemedView>
-  );
-}
-</file>
-
-<file path="app/qr-scan.tsx">
-import React, { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, Alert } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { CameraView, useCameraPermissions } from "expo-camera";
-import { router, useLocalSearchParams } from "expo-router";
-import * as SecureStore from "expo-secure-store";
-
-const API_BASE_URL = "http://172.27.25.158:3000";
-
-export default function QRScanScreen() {
-  const { context } = useLocalSearchParams<{ context?: string }>();
-  const [permission, requestPermission] = useCameraPermissions();
-  const [scanned, setScanned] = useState(false);
-
-  useEffect(() => {
-    if (!permission) {
-      requestPermission();
-    }
-  }, [permission]);
-
-  const handleBarCodeScanned = async ({ data }: { data: string }) => {
-    setScanned(true);
-    console.log("QR scanned:", data, "for context:", context);
-
-    try {
-      // Extract shipmentId and token from QR data
-      const params = new URLSearchParams(data);
-      const shipmentId = params.get("sid");
-      const token = await SecureStore.getItemAsync("authToken");
-
-      if (!shipmentId) {
-        Alert.alert("Error", "Invalid shipment code");
-        return;
-      }
-
-      if (!token){
-        Alert.alert("Error", "Invalid token");
-        return;
-      }
-
-      const url = `${API_BASE_URL}/api/v1/logistic/shipment/scan`;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          qrToken: data,
-        }),
-      });
-
-      // Check if response is JSON
-      const text = await res.text();
-      console.log("Response text:", text);
-
-      if (!res.ok) {
-        Alert.alert("Error", `API error: ${text}`);
-        return;
-      }
-
-      let result;
-      try {
-        result = JSON.parse(text);
-      } catch (err) {
-        Alert.alert("Error", "Invalid JSON response from server.");
-        return;
-      }
-
-      Alert.alert("Success", `Shipment status updated to: ${result.shipment.status}`);
-    } catch (err) {
-      console.error("Scan error:", err);
-      Alert.alert("Error", "Failed to update shipment status.");
-    } finally {
-      router.back();
-    }
-  };
-
-  if (!permission) {
-    return (
-      <SafeAreaView className="flex-1 items-center justify-center">
-        <Text>Requesting camera permission...</Text>
-      </SafeAreaView>
-    );
-  }
-
-  if (!permission.granted) {
-    return (
-      <SafeAreaView className="flex-1 items-center justify-center">
-        <Text className="text-red-500 mb-4">No access to camera</Text>
-        <TouchableOpacity onPress={requestPermission} className="px-4 py-2 rounded-full bg-blue-600">
-          <Text className="text-white">Allow Camera</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
-    );
-  }
-
-  return (
-    <SafeAreaView className="flex-1 bg-slate-900">
-      <View className="flex-row items-center px-4 py-3">
-        <TouchableOpacity
-          onPress={() => router.back()}
-          className="w-9 h-9 rounded-full bg-white/10 items-center justify-center mr-3"
-        >
-          <Text className="text-white text-lg">←</Text>
-        </TouchableOpacity>
-        <Text className="text-white text-lg font-semibold">
-          {context === "drop" ? "Scan Drop QR" : "Scan Pickup QR"}
-        </Text>
-      </View>
-      <View className="flex-1 items-center justify-center">
-        <View className="w-72 h-72 overflow-hidden rounded-3xl border-2 border-white/40">
-          <CameraView
-            style={{ width: "100%", height: "100%" }}
-            barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-            onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
-          />
-        </View>
-        {scanned && (
-          <TouchableOpacity
-            onPress={() => setScanned(false)}
-            className="mt-6 px-5 py-2.5 rounded-full bg-blue-600"
-          >
-            <Text className="text-white font-semibold">Scan Again</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </SafeAreaView>
-  );
-}
-</file>
-
-<file path="app/_layout.tsx">
-// app/_layout.tsx
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import "../global.css";
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export const unstable_settings = {
-  anchor: '/(auth)',
-};
-
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
-
-  return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="ShipmentDetails" options={{headerShown: false}} />
-        <Stack.Screen name="qr-scan" options={{headerShown: false}} />
-        <Stack.Screen name="MapScreen" options={{headerShown: false}} />
-
-        {/* <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} /> */}
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
-  );
-}
-</file>
-
-<file path="app/(tabs)/_layout.tsx">
-import { Tabs } from 'expo-router';
-import React from 'react';
-import { Text } from 'react-native';
-
-import { HapticTab } from '@/components/haptic-tab';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export const unstable_settings = {
-  initialRouteName: 'MyShipments',
-};
-
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
-  return (
-    <Tabs
-      initialRouteName="MyShipments"
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarButton: HapticTab,
-      }}
-    >
-      <Tabs.Screen
-        name="MyShipments"
-        options={{
-          title: 'My Shipments',
-          tabBarIcon: ({ color }) => <Text style={{ color }}>📦</Text>,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color }) => <Text style={{ color }}>👤</Text>,
-        }}
-      />
-      <Tabs.Screen
-        name="Settings"
-        options={{
-          title: 'Settings',
-          tabBarIcon: ({ color }) => <Text style={{ color }}>⚙️</Text>,
-        }}
-      />
-    </Tabs>
   );
 }
 </file>
@@ -2639,6 +2573,121 @@ const MyShipmentsScreen: React.FC<MyShipmentsScreenProps> = ({ token }) => {
 export default MyShipmentsScreen;
 </file>
 
+<file path="app/qr-scan.tsx">
+import React, { useEffect, useState } from "react";
+import { View, Text, TouchableOpacity, Alert } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Camera, CameraView, useCameraPermissions, BarcodeScanningResult } from "expo-camera";
+import { router, useLocalSearchParams } from "expo-router";
+
+const QRScanScreen = () => {
+  const [hasPermission, setHasPermission] = useState(false);
+  const [scanned, setScanned] = useState(false);
+  const { shipmentId } = useLocalSearchParams<{ shipmentId: string }>();
+  const [scannedData, setScannedData] = useState<string | null>(null);
+
+  const [permission, requestPermission] = useCameraPermissions();
+
+  useEffect(() => {
+    requestPermission();
+  }, []);
+
+  const handleBarCodeScanned = ({ data }: BarcodeScanningResult) => {
+    if (scanned) return;
+    setScanned(true);
+    setScannedData(data);
+    
+    // Validate QR against shipment (your backend call here)
+    Alert.alert("QR Scanned", `Data: ${data}\nShipment ID: ${shipmentId}\nValidate with backend?`, [
+      { text: "Cancel", style: "cancel" },
+      { text: "Validate", onPress: () => {
+          // e.g., router.push({ pathname: '/shipments/[id]', params: { id: shipmentId, qrData: data } });
+          router.back();
+        }
+      }
+    ]);
+  };
+
+  if (!permission) return <View><Text>Requesting camera permission...</Text></View>;
+  if (!permission.granted) return (
+    <SafeAreaView className="flex-1 bg-black justify-center items-center">
+      <Text className="text-white text-xl mb-4">Camera permission needed for QR scanning</Text>
+      <TouchableOpacity onPress={requestPermission} className="px-6 py-3 bg-blue-600 rounded-lg">
+        <Text className="text-white font-semibold">Grant Permission</Text>
+      </TouchableOpacity>
+    </SafeAreaView>
+  );
+
+  return (
+    <SafeAreaView className="flex-1 bg-black">
+      <View className="flex-1 justify-center items-center p-4">
+        <CameraView
+          style={{ flex: 1, width: '100%' }}
+          facing="back"
+          barcodeScannerSettings={{
+            barcodeTypes: ["qr"],  // QR only for shipments
+          }}
+          onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+        />
+        {scanned && scannedData && (
+          <View className="absolute bottom-20 bg-white/90 p-6 rounded-2xl shadow-2xl">
+            <Text className="text-xl font-bold text-center mb-2">Scanned Successfully!</Text>
+            <Text className="text-base text-gray-700 mb-4 text-center">{scannedData}</Text>
+            <TouchableOpacity
+              onPress={() => setScanned(false)}
+              className="px-6 py-3 bg-blue-600 rounded-xl"
+            >
+              <Text className="text-white font-semibold text-center">Scan Again</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        {!scanned && (
+          <View className="absolute top-20 bg-white/90 p-4 rounded-2xl shadow-xl">
+            <Text className="text-lg font-semibold text-center mb-2">Point at Shipment QR Code</Text>
+          </View>
+        )}
+      </View>
+    </SafeAreaView>
+  );
+};
+
+export default QRScanScreen;
+</file>
+
+<file path="app/_layout.tsx">
+// app/_layout.tsx
+import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import "../global.css";
+import { useColorScheme } from '@/hooks/use-color-scheme';
+
+export const unstable_settings = {
+  anchor: '/(auth)',
+};
+
+export default function RootLayout() {
+  const colorScheme = useColorScheme();
+
+  return (
+    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <Stack>
+
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="ShipmentDetails" options={{headerShown: false}} />
+        <Stack.Screen name="qr-scan" options={{headerShown: false}} />
+        <Stack.Screen name="MapScreen" options={{headerShown: false}} />
+        <Stack.Screen name="faqs" options={{headerShown: false}} />
+
+        {/* <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} /> */}
+      </Stack>
+      <StatusBar style="auto" />
+    </ThemeProvider>
+  );
+}
+</file>
+
 <file path="app/(tabs)/Settings.tsx">
 import React, { useState } from "react";
 import {
@@ -2936,19 +2985,22 @@ export default function SettingsScreen() {
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",
     "dotenv": "^17.2.3",
-    "expo": "~54.0.29",
+    "expo": "~54.0.31",
     "expo-barcode-scanner": "^13.0.1",
     "expo-camera": "~17.0.10",
     "expo-constants": "~18.0.12",
+    "expo-file-system": "~19.0.21",
     "expo-font": "~14.0.10",
     "expo-haptics": "~15.0.8",
     "expo-image": "~3.0.11",
     "expo-image-picker": "~17.0.10",
-    "expo-linking": "~8.0.10",
+    "expo-linking": "~8.0.11",
     "expo-location": "~19.0.8",
-    "expo-router": "~6.0.20",
+    "expo-print": "~15.0.8",
+    "expo-router": "~6.0.21",
     "expo-secure-store": "~15.0.8",
-    "expo-splash-screen": "~31.0.12",
+    "expo-sharing": "~14.0.8",
+    "expo-splash-screen": "~31.0.13",
     "expo-status-bar": "~3.0.9",
     "expo-symbols": "~1.0.8",
     "expo-system-ui": "~6.0.9",
@@ -2959,6 +3011,7 @@ export default function SettingsScreen() {
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
     "react-native-gesture-handler": "~2.28.0",
+    "react-native-html-to-pdf": "^1.3.0",
     "react-native-maps": "1.20.1",
     "react-native-maps-directions": "^1.9.0",
     "react-native-reanimated": "~4.1.1",

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Text } from "react-native";
+import { ActivityIndicator, Text, Image, Dimensions } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE, Region } from "react-native-maps";
 import MapViewDirections from "react-native-maps-directions";
 import * as Location from "expo-location";
@@ -7,12 +7,12 @@ import * as TaskManager from "expo-task-manager";
 import Constants from "expo-constants";
 import { useLocalSearchParams } from "expo-router";
 import { ThemedView } from "@/components/themed-view";
-import truck from "../assets/images/truck.png";
+import truck from "../assets/images/delivery-truck.png";
+import { API_BASE_URL } from '@/constants/api';
 
 const LOCATION_TASK_NAME = "BACKGROUND_LOCATION_TASK";
 const GOOGLE_MAPS_APIKEY = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY;
-const API_BASE_URL = "http://172.27.25.158:3000";
-const BACKEND_URL = `${API_BASE_URL}/api/v1/driver/location`;
+const BACKEND_URL = `${API_BASE_URL}/driver/location`;
 const isExpoGo: boolean = Constants.executionEnvironment === "storeClient";
 
 type ShipmentStatus = "pending" | "booked" | "in-transit" | "delivered" | "cancelled";
@@ -26,6 +26,10 @@ interface Shipment {
   status: ShipmentStatus;
   createdAt: string;
 }
+
+// Responsive truck size calculation
+const { width: screenWidth } = Dimensions.get('window');
+const TRUCK_SIZE = screenWidth * 0.09; // 8% of screen width
 
 TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
   if (Constants.executionEnvironment === "storeClient") {
@@ -68,7 +72,7 @@ export default function MapScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const isExpoGo = Constants.executionEnvironment === "storeClient";
+  const isExpoGoLocal = Constants.executionEnvironment === "storeClient";
 
   useEffect(() => {
     const fetchShipment = async () => {
@@ -79,7 +83,7 @@ export default function MapScreen() {
           return;
         }
 
-        const res = await fetch(`${API_BASE_URL}/api/v1/user/order/get/${shipmentId}`, {
+        const res = await fetch(`${API_BASE_URL}/user/order/get/${shipmentId}`, {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
@@ -123,7 +127,7 @@ export default function MapScreen() {
         (loc) => setDriverLocation(loc.coords)
       );
 
-      if (!isExpoGo) {
+      if (!isExpoGoLocal) {
         await Location.requestBackgroundPermissionsAsync();
         await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
           accuracy: Location.Accuracy.BestForNavigation,
@@ -140,11 +144,11 @@ export default function MapScreen() {
     startLocationTracking();
 
     return () => {
-      if (!isExpoGo) {
+      if (!isExpoGoLocal) {
         Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
       }
     };
-  }, [isExpoGo]);
+  }, [isExpoGoLocal]);
 
   if (loading || !shipment) {
     if (error) {
@@ -176,7 +180,25 @@ export default function MapScreen() {
       <MapView provider={PROVIDER_GOOGLE} style={{ flex: 1 }} initialRegion={region}>
         <Marker coordinate={pickup} title="Pickup" pinColor="green" />
         <Marker coordinate={destination} title="Destination" />
-        {driverLocation && <Marker coordinate={driverLocation} title="Driver" image={truck} />}
+        
+        {/* ✅ RESPONSIVE TRUCK MARKER */}
+        {driverLocation && (
+          <Marker 
+            coordinate={driverLocation} 
+            title="Driver"
+            anchor={{ x: 0.5, y: 1 }} // Bottom-center anchor for truck
+          >
+            <Image 
+              source={truck} 
+              style={{
+                width: TRUCK_SIZE,           // Responsive: 8% of screen width
+                height: TRUCK_SIZE * 1.2,    // Proportional truck height
+                resizeMode: 'contain',       // Preserves image quality
+              }}
+            />
+          </Marker>
+        )}
+        
         <MapViewDirections
           origin={pickup}
           destination={destination}

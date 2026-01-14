@@ -10,8 +10,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as SecureStore from "expo-secure-store";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
-
-const API_BASE_URL = "http://172.27.25.158:3000";
+import { API_BASE_URL } from '@/constants/api';
 
 interface UserProfile {
   name: string;
@@ -79,7 +78,7 @@ export default function ProfileScreen() {
         return;
       }
 
-      const res = await fetch(`${API_BASE_URL}/api/v1/user/me`, {
+      const res = await fetch(`${API_BASE_URL}/user/me`, {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,

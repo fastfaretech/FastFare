@@ -1,4 +1,5 @@
 // app/(auth)/user-login.tsx
+import {API_BASE_URL} from '@/constants/api';
 import React, { useState } from "react";
 import {
   View,
@@ -12,7 +13,6 @@ import {
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 
-const API_BASE_URL = "http://172.27.25.158:3000"; // your backend
 
 const UserLoginScreen: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -28,7 +28,7 @@ const UserLoginScreen: React.FC = () => {
     try {
       setLoading(true);
 
-      const res = await fetch(`${API_BASE_URL}/api/v1/user/login`, {
+      const res = await fetch(`${API_BASE_URL}/user/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),

@@ -10,6 +10,8 @@ web-build/
 expo-env.d.ts
 .env
 app.json
+constants/api.ts
+
 # Native
 .kotlin/
 *.orig.*
@@ -18,6 +20,7 @@ app.json
 *.p12
 *.key
 *.mobileprovision
+
 
 # Metro
 .metro-health-check*

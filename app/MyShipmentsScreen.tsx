@@ -9,8 +9,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import * as Location from "expo-location";
+import {API_BASE_URL} from '@/constants/api';
 
-type ShipmentStatus = "confirmed" | "rejected" | "pending" | "in-transit" | "delivered" | "cancelled";
+type ShipmentStatus = "confirmed" | "pending" | "in-transit" | "delivered";
 
 interface Shipment {
   _id: string;
@@ -38,8 +39,6 @@ const FILTERS: { label: string; value: ShipmentStatus | "all" }[] = [
   { label: "Confirmed", value: "confirmed" },
   { label: "In-transit", value: "in-transit" },
   { label: "Delivered", value: "delivered" },
-  { label: "Cancelled", value: "cancelled" },
-  { label: "Rejected", value: "rejected" },
 ];
 
 async function coordsToAddressString(lat: number, lng: number) {
@@ -92,7 +91,7 @@ const MyShipmentsScreen: React.FC<MyShipmentsScreenProps> = ({ token }) => {
       setError(null);
 
       const res = await fetch(
-        "http://172.27.25.158:3000/api/v1/user/order/list",
+        `${API_BASE_URL}/user/order/list`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -148,7 +147,6 @@ const MyShipmentsScreen: React.FC<MyShipmentsScreenProps> = ({ token }) => {
     if (status === "pending") baseColors = "bg-amber-200 text-slate-800";
     if (status === "in-transit") baseColors = "bg-blue-400 text-white";
     if (status === "delivered") baseColors = "bg-green-500 text-white";
-    if (status === "cancelled" || status === "rejected") baseColors = "bg-red-500 text-white";
     if (status === "confirmed") baseColors = "bg-green-200 text-slate-800";
 
     return (

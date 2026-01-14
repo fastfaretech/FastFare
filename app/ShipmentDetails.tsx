@@ -12,6 +12,7 @@ import * as Location from "expo-location";
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from "expo-file-system/legacy";
+import { API_BASE_URL } from "@/constants/api";
 
 const { StorageAccessFramework } = FileSystem;
 
@@ -43,7 +44,6 @@ interface DriverDetails {
   status: string;
 }
 
-const API_BASE_URL = "http://172.27.25.158:3000";
 
 async function coordsToAddressString(lat: number, lng: number) {
   try {
@@ -97,7 +97,7 @@ export default function ShipmentDetailsScreen() {
       setLoading(true);
       setError(null);
 
-      const res = await fetch(`${API_BASE_URL}/api/v1/user/order/get/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/user/order/get/${id}`, {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${jwt}`,
@@ -204,7 +204,7 @@ export default function ShipmentDetailsScreen() {
               <strong>Contact:</strong> 7073998855
             </div>
             <div class="box">
-              <strong>Courier:</strong> Shadowfax Surface
+              <strong>Courier:</strong> FastFare
             </div>
           </div>
           <div class="manifest-box">
@@ -272,7 +272,7 @@ export default function ShipmentDetailsScreen() {
         });
   
         console.log("Saved to:", fileUri);
-        alert("PDF saved successfully 🎉");
+        alert("PDF saved successfully!");
   
       } catch (err) {
         console.error("Error generating PDF:", err);

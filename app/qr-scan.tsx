@@ -1,130 +1,183 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, Alert } from "react-native";
+import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { CameraView, useCameraPermissions } from "expo-camera";
+import { Camera, CameraView, useCameraPermissions, BarcodeScanningResult } from "expo-camera";
 import { router, useLocalSearchParams } from "expo-router";
-import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "expo-secure-store";  // ✅ CHANGED: SecureStore
+import { API_BASE_URL } from '@/constants/api';
 
-const API_BASE_URL = "http://172.27.25.158:3000";
-
-export default function QRScanScreen() {
-  const { context } = useLocalSearchParams<{ context?: string }>();
-  const [permission, requestPermission] = useCameraPermissions();
+const QRScanScreen = () => {
+  const [hasPermission, setHasPermission] = useState(false);
   const [scanned, setScanned] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [scannedData, setScannedData] = useState<string | null>(null);
+  const { shipmentId } = useLocalSearchParams<{ shipmentId: string }>();
 
-  useEffect(() => {
-    if (!permission) {
-      requestPermission();
-    }
-  }, [permission]);
+  const [permission, requestPermission] = useCameraPermissions();
 
-  const handleBarCodeScanned = async ({ data }: { data: string }) => {
-    setScanned(true);
-    console.log("QR scanned:", data, "for context:", context);
-
+  // ✅ Updated debug for SecureStore
+  const debugStorage = async () => {
     try {
-      // Extract shipmentId and token from QR data
-      const params = new URLSearchParams(data);
-      const shipmentId = params.get("sid");
-      const token = await SecureStore.getItemAsync("authToken");
-
-      if (!shipmentId) {
-        Alert.alert("Error", "Invalid shipment code");
-        return;
+      // Check SecureStore (your actual token location)
+      const authToken = await SecureStore.getItemAsync('authToken');
+      console.log("🔐 SecureStore authToken:", authToken ? "✅ FOUND" : "❌ NULL");
+      
+      if (authToken) {
+        console.log("✅ Token preview:", authToken.substring(0, 20) + "...");
       }
-
-      if (!token){
-        Alert.alert("Error", "Invalid token");
-        return;
-      }
-
-      const url = `${API_BASE_URL}/api/v1/logistic/shipment/scan`;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          qrToken: data,
-        }),
-      });
-
-      // Check if response is JSON
-      const text = await res.text();
-      console.log("Response text:", text);
-
-      if (!res.ok) {
-        Alert.alert("Error", `API error: ${text}`);
-        return;
-      }
-
-      let result;
-      try {
-        result = JSON.parse(text);
-      } catch (err) {
-        Alert.alert("Error", "Invalid JSON response from server.");
-        return;
-      }
-
-      Alert.alert("Success", `Shipment status updated to: ${result.shipment.status}`);
-    } catch (err) {
-      console.error("Scan error:", err);
-      Alert.alert("Error", "Failed to update shipment status.");
-    } finally {
-      router.back();
+    } catch (e) {
+      console.log("SecureStore debug error:", e);
     }
   };
 
-  if (!permission) {
-    return (
-      <SafeAreaView className="flex-1 items-center justify-center">
-        <Text>Requesting camera permission...</Text>
-      </SafeAreaView>
-    );
-  }
+  useEffect(() => {
+    debugStorage();
+    requestPermission();
+  }, []);
 
-  if (!permission.granted) {
-    return (
-      <SafeAreaView className="flex-1 items-center justify-center">
-        <Text className="text-red-500 mb-4">No access to camera</Text>
-        <TouchableOpacity onPress={requestPermission} className="px-4 py-2 rounded-full bg-blue-600">
-          <Text className="text-white">Allow Camera</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
+  const validateQRAndUpdateStatus = async (qrData: string) => {
+    setLoading(true);
+    try {
+      const token = await SecureStore.getItemAsync('authToken');
+      
+      if (!token) {
+        Alert.alert("❌ Login Required", "Please login again.");
+        router.push('/(auth)/user-login');
+        return;
+      }
+  
+      console.log("✅ Using token:", token.substring(0, 20) + "...");
+  
+      const params = new URLSearchParams(qrData);
+      const qrShipmentId = params.get("sid");
+      const qrToken = params.get("token");
+  
+      if (!qrShipmentId || !qrToken) {
+        Alert.alert("Invalid QR", "QR code format incorrect.");
+        return;
+      }
+  
+      // ✅ FIXED ENDPOINT - Matches your backend routes
+      const response = await fetch(`${API_BASE_URL}/logistic/shipment/scan`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ qrToken: qrData }),
+      });
+  
+      // ✅ DEBUG: Log raw response first
+      const responseText = await response.text();
+      console.log("📡 Backend response:", response.status, responseText.substring(0, 200));
+  
+      if (!response.ok) {
+        Alert.alert("❌ Backend Error", `Status: ${response.status}\n${responseText.substring(0, 100)}`);
+        return;
+      }
+  
+      const result = JSON.parse(responseText);
+      const newStatus = result.shipment.status;
+      
+      Alert.alert("✅ Success!", `Shipment ${qrShipmentId} → "${newStatus}"!`, [
+        {
+          text: "OK",
+          onPress: () => {
+            setScanned(false);
+            setScannedData(null);
+            router.back();
+          }
+        }
+      ]);
+    } catch (error: any) {
+      console.error("Scan error:", error);
+      Alert.alert("Network Error", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+
+  const handleBarCodeScanned = ({ data }: BarcodeScanningResult) => {
+    if (scanned) return;
+    
+    setScanned(true);
+    setScannedData(data);
+    
+    // Show confirmation before backend call
+    Alert.alert(
+      "QR Scanned", 
+      `Data: ${data}\n\nValidate with backend?`, 
+      [
+        { text: "Cancel", style: "cancel", onPress: () => setScanned(false) },
+        { 
+          text: "✅ Validate", 
+          onPress: () => validateQRAndUpdateStatus(data)
+        }
+      ]
     );
-  }
+  };
+
+  if (!permission) return <View><Text>Requesting camera permission...</Text></View>;
+  if (!permission.granted) return (
+    <SafeAreaView className="flex-1 bg-black justify-center items-center">
+      <Text className="text-white text-xl mb-4">Camera permission needed for QR scanning</Text>
+      <TouchableOpacity onPress={requestPermission} className="px-6 py-3 bg-blue-600 rounded-lg">
+        <Text className="text-white font-semibold">Grant Permission</Text>
+      </TouchableOpacity>
+    </SafeAreaView>
+  );
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-900">
-      <View className="flex-row items-center px-4 py-3">
-        <TouchableOpacity
-          onPress={() => router.back()}
-          className="w-9 h-9 rounded-full bg-white/10 items-center justify-center mr-3"
-        >
-          <Text className="text-white text-lg">←</Text>
-        </TouchableOpacity>
-        <Text className="text-white text-lg font-semibold">
-          {context === "drop" ? "Scan Drop QR" : "Scan Pickup QR"}
-        </Text>
-      </View>
-      <View className="flex-1 items-center justify-center">
-        <View className="w-72 h-72 overflow-hidden rounded-3xl border-2 border-white/40">
-          <CameraView
-            style={{ width: "100%", height: "100%" }}
-            barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-            onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
-          />
-        </View>
-        {scanned && (
-          <TouchableOpacity
-            onPress={() => setScanned(false)}
-            className="mt-6 px-5 py-2.5 rounded-full bg-blue-600"
-          >
-            <Text className="text-white font-semibold">Scan Again</Text>
-          </TouchableOpacity>
+    <SafeAreaView className="flex-1 bg-black">
+      <View className="flex-1 justify-center items-center p-4">
+        <CameraView
+          style={{ flex: 1, width: '100%' }}
+          facing="back"
+          barcodeScannerSettings={{
+            barcodeTypes: ["qr"],
+          }}
+          onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+        />
+        
+        {/* Loading overlay */}
+        {loading && (
+          <View className="absolute inset-0 bg-black/50 justify-center items-center">
+            <ActivityIndicator size="large" color="#3B82F6" />
+            <Text className="text-white text-lg mt-4">Updating shipment status...</Text>
+          </View>
+        )}
+        
+        {/* Scan confirmation overlay */}
+        {scanned && scannedData && !loading && (
+          <View className="absolute bottom-20 bg-white/95 p-6 rounded-2xl shadow-2xl min-w-[80%]">
+            <Text className="text-xl font-bold text-center mb-4 text-gray-800">Scanned Successfully!</Text>
+            <Text className="text-sm text-gray-600 mb-6 text-center font-mono bg-gray-100 p-2 rounded-lg">
+              {scannedData}
+            </Text>
+            <TouchableOpacity
+              onPress={() => setScanned(false)}
+              className="px-6 py-3 bg-gray-500 rounded-xl"
+            >
+              <Text className="text-white font-semibold text-center">Scan Again</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        
+        {/* Scan instruction overlay */}
+        {!scanned && !loading && (
+          <View className="absolute top-20 bg-white/90 p-6 rounded-2xl shadow-xl">
+            <Text className="text-xl font-bold text-center mb-2 text-gray-800">
+              📦 Point at Shipment QR Code
+            </Text>
+            <Text className="text-sm text-gray-600 text-center">
+              Expected format: sid=FFR-xxx&token=PCK-xxx
+            </Text>
+          </View>
         )}
       </View>
     </SafeAreaView>
   );
-}
+};
+
+export default QRScanScreen;
