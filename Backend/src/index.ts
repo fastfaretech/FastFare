@@ -22,6 +22,6 @@ app.use('/api/v1', routerv1)
 
 app.get('/', (req, res)=>{res.send('Health Check Passed')})  
 
-app.listen(PORT, ()=>{
+app.listen(PORT, '0.0.0.0', ()=>{
     console.log(`Server is running on port ${PORT}`)
 })
