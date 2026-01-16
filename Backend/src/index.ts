@@ -1,27 +1,40 @@
-import express from "express"
-import cors from "cors"
-import helmet from "helmet"
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import http from "http";
+import { Server } from "socket.io";
 
-import { config } from "./utils/envConfig"
-import { dbConnect } from "./db/dbConnect"
-import routerv1 from "./routes/connector"
+import { config } from "./utils/envConfig";
+import { dbConnect } from "./db/dbConnect";
+import routerv1 from "./routes/connector";
+import { registerDriverLocationSocket } from "./sockets/socket";
 
-const app = express()
+const app = express();
+const PORT = config.PORT;
 
-const PORT = config.PORT
+dbConnect();
 
-dbConnect()
+app.use(cors());
+app.use(helmet());
+app.use(express.json());
 
-app.use(cors())
+app.use("/api/v1", routerv1);
 
-app.use(helmet())
+app.get("/", (req, res) => {
+  res.send("Health Check Passed");
+});
 
-app.use(express.json())
+const httpServer = http.createServer(app);
 
-app.use('/api/v1', routerv1)
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
 
-app.get('/', (req, res)=>{res.send('Health Check Passed')})  
+registerDriverLocationSocket(io);
 
-app.listen(PORT, ()=>{
-    console.log(`Server is running on port ${PORT}`)
-})
+httpServer.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
