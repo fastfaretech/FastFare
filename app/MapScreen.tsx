@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Text, Image, Dimensions } from "react-native";
+import { ActivityIndicator, Text, Image, Dimensions, Alert } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE, Region } from "react-native-maps";
 import MapViewDirections from "react-native-maps-directions";
 import * as Location from "expo-location";
@@ -8,7 +8,7 @@ import Constants from "expo-constants";
 import { useLocalSearchParams } from "expo-router";
 import { ThemedView } from "@/components/themed-view";
 import truck from "../assets/images/delivery-truck.png";
-import { API_BASE_URL } from '@/constants/api';
+import { API_BASE_URL } from '../constants/api';
 
 const LOCATION_TASK_NAME = "BACKGROUND_LOCATION_TASK";
 const GOOGLE_MAPS_APIKEY = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY;
@@ -71,8 +71,14 @@ export default function MapScreen() {
   const [driverLocation, setDriverLocation] = useState<Location.LocationObjectCoords | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [directionsError, setDirectionsError] = useState<string | null>(null);
 
   const isExpoGoLocal = Constants.executionEnvironment === "storeClient";
+
+  // ✅ DEBUG: Log API key status
+  console.log('🚗 MapScreen - API Key:', GOOGLE_MAPS_APIKEY ? '✅ LOADED' : '❌ MISSING');
+  console.log('🚗 MapScreen - Shipment ID:', shipmentId);
+  console.log('🚗 MapScreen - Token:', token ? '✅ PRESENT' : '❌ MISSING');
 
   useEffect(() => {
     const fetchShipment = async () => {
@@ -101,8 +107,10 @@ export default function MapScreen() {
 
         const json = JSON.parse(text) as { shipment: Shipment };
         setShipment(json.shipment);
+        console.log('✅ Shipment loaded:', json.shipment.shipmentId);
       } catch (e: any) {
         setError(e.message ?? "Something went wrong");
+        console.error('Shipment fetch error:', e);
       } finally {
         setLoading(false);
       }
@@ -116,6 +124,7 @@ export default function MapScreen() {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         console.log("Permission to access location was denied");
+        Alert.alert("Location Permission", "Location access required for tracking");
         return;
       }
 
@@ -124,20 +133,26 @@ export default function MapScreen() {
           accuracy: Location.Accuracy.BestForNavigation,
           distanceInterval: 10,
         },
-        (loc) => setDriverLocation(loc.coords)
+        (loc) => {
+          console.log('📍 New driver location:', loc.coords);
+          setDriverLocation(loc.coords);
+        }
       );
 
       if (!isExpoGoLocal) {
-        await Location.requestBackgroundPermissionsAsync();
-        await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-          accuracy: Location.Accuracy.BestForNavigation,
-          showsBackgroundLocationIndicator: true,
-          foregroundService: {
-            notificationTitle: "FastFare Driver",
-            notificationBody: "Location tracking in background",
-            notificationColor: "#fff",
-          },
-        });
+        const bgStatus = await Location.requestBackgroundPermissionsAsync();
+        if (bgStatus.status === 'granted') {
+          await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+            accuracy: Location.Accuracy.BestForNavigation,
+            showsBackgroundLocationIndicator: true,
+            foregroundService: {
+              notificationTitle: "FastFare Driver",
+              notificationBody: "Location tracking in background",
+              notificationColor: "#3B82F6",
+            },
+          });
+          console.log('✅ Background location tracking started');
+        }
       }
     };
 
@@ -145,7 +160,7 @@ export default function MapScreen() {
 
     return () => {
       if (!isExpoGoLocal) {
-        Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
+        Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME).catch(console.log);
       }
     };
   }, [isExpoGoLocal]);
@@ -154,13 +169,17 @@ export default function MapScreen() {
     if (error) {
       return (
         <ThemedView className="flex-1 items-center justify-center px-6">
-          <Text className="text-red-500 text-base text-center">{error}</Text>
+          <Text className="text-red-500 text-base text-center mb-4">{error}</Text>
+          <Text className="text-slate-500 text-sm text-center">
+            Shipment ID: {shipmentId} | Token: {token ? 'Present' : 'Missing'}
+          </Text>
         </ThemedView>
       );
     }
     return (
       <ThemedView className="flex-1 items-center justify-center">
-        <ActivityIndicator />
+        <ActivityIndicator size="large" />
+        <Text className="mt-2 text-slate-500">Loading shipment...</Text>
       </ThemedView>
     );
   }
@@ -171,42 +190,81 @@ export default function MapScreen() {
   const region: Region = {
     latitude: (pickup.latitude + destination.latitude) / 2,
     longitude: (pickup.longitude + destination.longitude) / 2,
-    latitudeDelta: Math.abs(pickup.latitude - destination.latitude) + 2,
-    longitudeDelta: Math.abs(pickup.longitude - destination.longitude) + 2,
+    latitudeDelta: Math.abs(pickup.latitude - destination.latitude) + 0.02,
+    longitudeDelta: Math.abs(pickup.longitude - destination.longitude) + 0.02,
   };
 
   return (
     <ThemedView className="flex-1">
-      <MapView provider={PROVIDER_GOOGLE} style={{ flex: 1 }} initialRegion={region}>
-        <Marker coordinate={pickup} title="Pickup" pinColor="green" />
-        <Marker coordinate={destination} title="Destination" />
+      {/* ✅ FIXED MapView with Route Line */}
+      <MapView 
+        provider={PROVIDER_GOOGLE} 
+        style={{ flex: 1 }} 
+        initialRegion={region}
+        showsUserLocation={false} // Disable default blue dot
+        showsMyLocationButton={true}
+        showsCompass={true}
+      >
+        {/* Pickup Marker */}
+        <Marker 
+          coordinate={pickup} 
+          title="📦 Pickup Location" 
+          description={shipment.shipmentId}
+          pinColor="green"
+        />
+
+        {/* Destination Marker */}
+        <Marker 
+          coordinate={destination} 
+          title="🏁 Delivery Location" 
+          pinColor="red"
+        />
         
         {/* ✅ RESPONSIVE TRUCK MARKER */}
         {driverLocation && (
           <Marker 
             coordinate={driverLocation} 
-            title="Driver"
+            title="🚚 You are here"
             anchor={{ x: 0.5, y: 1 }} // Bottom-center anchor for truck
           >
             <Image 
               source={truck} 
               style={{
-                width: TRUCK_SIZE,           // Responsive: 8% of screen width
-                height: TRUCK_SIZE * 1.2,    // Proportional truck height
-                resizeMode: 'contain',       // Preserves image quality
+                width: TRUCK_SIZE,
+                height: TRUCK_SIZE * 1.2,
+                resizeMode: 'contain',
               }}
             />
           </Marker>
         )}
-        
-        <MapViewDirections
-          origin={pickup}
-          destination={destination}
-          apikey={GOOGLE_MAPS_APIKEY}
-          strokeWidth={3}
-          strokeColor="blue"
-        />
+
+        {/* ✅ FIXED ROUTE LINE - KEY CHANGES */}
+        {shipment && GOOGLE_MAPS_APIKEY && (
+          <MapViewDirections
+            origin={pickup}
+            destination={destination}
+            apikey={GOOGLE_MAPS_APIKEY}
+            mode="DRIVING"                    // ✅ REQUIRED
+            strokeWidth={6}                   // ✅ Thicker line
+            strokeColor="#3B82F6"             // ✅ FastFare blue
+            lineDashPattern={[10, 5]}         // ✅ Dashed for style
+            onReady={(result) => {
+              console.log('✅ Route loaded:', result.distance, 'km,', result.duration, 'min');
+            }}
+            onError={(errorMsg) => {
+              console.error('❌ Directions Error:', errorMsg);
+              setDirectionsError(errorMsg);
+            }}
+          />
+        )}
       </MapView>
+
+      {/* Debug overlay */}
+      {directionsError && (
+        <ThemedView className="absolute top-4 left-4 bg-red-500 px-3 py-2 rounded-lg">
+          <Text className="text-white text-sm">Route Error: {directionsError}</Text>
+        </ThemedView>
+      )}
     </ThemedView>
   );
 }

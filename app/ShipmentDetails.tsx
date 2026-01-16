@@ -12,7 +12,7 @@ import * as Location from "expo-location";
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from "expo-file-system/legacy";
-import { API_BASE_URL } from "@/constants/api";
+import { API_BASE_URL } from "../constants/api";
 
 const { StorageAccessFramework } = FileSystem;
 
@@ -200,7 +200,7 @@ export default function ShipmentDetailsScreen() {
           <div class="subheading">Generated on: ${dateStr} ${timeStr}</div>
           <div class="row">
             <div class="box">
-              <strong>Seller:</strong> TRUSTin.ONLINE<br/>
+              <strong>Seller:</strong> _____________<br/>
               <strong>Contact:</strong> 7073998855
             </div>
             <div class="box">

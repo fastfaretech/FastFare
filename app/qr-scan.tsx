@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Camera, CameraView, useCameraPermissions, BarcodeScanningResult } from "expo-camera";
 import { router, useLocalSearchParams } from "expo-router";
 import * as SecureStore from "expo-secure-store";  // ✅ CHANGED: SecureStore
-import { API_BASE_URL } from '@/constants/api';
+import { API_BASE_URL } from '../constants/api';
 
 const QRScanScreen = () => {
   const [hasPermission, setHasPermission] = useState(false);

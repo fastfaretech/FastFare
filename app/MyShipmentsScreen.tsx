@@ -9,7 +9,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import * as Location from "expo-location";
-import {API_BASE_URL} from '@/constants/api';
+import {API_BASE_URL} from '../constants/api';
 
 type ShipmentStatus = "confirmed" | "pending" | "in-transit" | "delivered";
 
