@@ -1,11 +1,11 @@
 import 'dotenv/config';
 
 export default {
-  name: "fastfare_frontend",
-  slug: "fastfare_frontend",
+  name: "FastFare Driver App",
+  slug: "FastFare Driver App",
   version: "1.0.0",
   orientation: "portrait",
-  icon: "./assets/images/icon.png",
+  icon: "./assets/images/fastfare-logo.png",
   scheme: "fastfarefrontend",
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
@@ -37,7 +37,7 @@ export default {
   },
   web: {
     output: "static",
-    favicon: "./assets/images/favicon.png",
+    favicon: "./assets/images/fastfare-logo.png",
     bundler: "metro",
   },
   plugins: [
@@ -48,9 +48,9 @@ export default {
         image: "./assets/images/splash-icon.png",
         imageWidth: 200,
         resizeMode: "contain",
-        backgroundColor: "#ffffff",
+        backgroundColor: "#3B82F6",
         dark: {
-          backgroundColor: "#000000",
+          backgroundColor: "#1E3A8A",
         },
       },
     ],

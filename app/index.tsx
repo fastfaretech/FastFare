@@ -1,6 +1,11 @@
-import { router } from "expo-router";
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 
 export default function Index() {
-  router.replace("/(auth)/user-login");
+  useFocusEffect(
+    useCallback(() => {
+      router.replace('./(splash)'); // Redirect to splash on load
+    }, [])
+  );
   return null;
 }
