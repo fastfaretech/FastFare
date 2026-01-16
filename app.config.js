@@ -2,7 +2,7 @@ import 'dotenv/config';
 
 export default {
   name: "FastFare Driver App",
-  slug: "FastFare Driver App",
+  slug: "fastfare_frontend",
   version: "1.0.0",
   orientation: "portrait",
   icon: "./assets/images/fastfare-logo.png",
