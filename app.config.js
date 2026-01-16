@@ -61,7 +61,7 @@ export default {
       },
     ],
     "expo-secure-store",
-    "expo-barcode-scanner",
+    // "expo-barcode-scanner",
   ],
   
   experiments: {
