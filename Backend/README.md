@@ -83,25 +83,96 @@ src/
 
 ### 1. Authentication
 
-- **POST** `/api/v1/login`: Authenticates users/admins/drivers and returns a JWT.
-- **GET** `/api/v1/fetchdetail`: Retrieves role-specific details (User, Admin, Logistic) based on the token.
+- **POST** `/api/v1/login`: Authenticates users, admins, drivers, and logistics providers. Returns a JWT token.
+- **GET** `/api/v1/fetchdetail`: Uses the JWT to retrieve role-specific details (e.g., User profile, Admin stats, Logistic company info).
 
 ### 2. User Operations
 
-- **POST** `/api/v1/user/order/book`: Users can book a new shipment.
-- **GET** `/api/v1/user/order/get/:shipmentId`: Retrieve shipment details.
+- **POST** `/api/v1/user/order/book`: Users book a new shipment.
+  - **Inputs**: Pickup/Delivery locations, size, weight, price.
+  - **Process**:
+    1.  Validates all inputs.
+    2.  Creates a Shipment record (Status: `pending`).
+    3.  Generates two QR tokens: `pickupQrToken` and `deliveryQrToken`.
+    4.  Generates QR code images.
+    5.  Sends emails to Pickup and Delivery contacts with the respective QR codes.
+  - **Outputs**: Created Shipment object.
+- **GET** `/api/v1/user/order/get/:shipmentId`: View shipment details.
 
-### 3. Real-time Driver Tracking (Socket.io)
+### 3. Logistics & Driver Management
 
-- **Connect**: Clients connect to the base URL.
-- **Events**:
-  - `driver:location:set`: Driver sends `{ userId, latitude, longitude }`.
-  - `driver:location:get`: Fetch current location of a driver.
-  - `driver:location:update`: Broadcast event received by clients tracking a driver.
+- **POST** `/api/v1/logistic/register`: Register a new Logistics Company.
+- **POST** `/api/v1/logistic/driver/add`: Logistics Provider adds a new driver.
+  - **Process**:
+    1.  Checks for existing driver/user.
+    2.  Creates a `User` account (Role: `driver`) with a temporary password.
+    3.  Creates a `DriverDetails` record linked to the Logistics Provider.
+    4.  Sends an email to the driver with login credentials.
+- **POST** `/api/v1/logistic/shipment/confirm`: Logistics Provider assigns a driver to a shipment.
+  - **Process**:
+    1.  Updates Shipment status to `confirmed`.
+    2.  Assigns `DriverId` to the shipment.
+    3.  Sets Driver status to `on-duty` and increments `currentOrders`.
+
+### 4. Driver Operations (Scanning)
+
+- **POST** `/api/v1/logistic/shipment/scan`: Driver scans QR codes to update status.
+  - **Pickup**: Driver scans `pickupQrToken`. Shipment status updates to `in-transit`.
+  - **Delivery**: Driver scans `deliveryQrToken`. Shipment status updates to `delivered`.
+  - **Completion**: When delivered, Driver's `currentOrders` is decremented. If 0, Driver status becomes `available`.
+
+### 5. Real-time Driver Tracking (Socket.io)
+
+- **Connection**: Clients (User App, Driver App) connect to the server root.
+- **Event: `driver:location:set`**:
+  - **Source**: Driver App.
+  - **Payload**: `{ userId, latitude, longitude }`.
+  - **Action**: Updates `DriverDetails` in DB.
+- **Event: `driver:location:update`**:
+  - **Source**: Server (Broadcast).
+  - **Payload**: `{ userId, latitude, longitude }`.
+  - **Action**: Sent to all connected clients to update the driver's position on the map live.
+
+## 🏗️ System Architecture & Flow
+
+### Shipment Lifecycle
+
+```mermaid
+graph TD
+    A[User Books Shipment] -->|Validates & Saves| B(Shipment Pending)
+    B -->|Generates QRs| C[Emails Sent to Contacts]
+    B -->|Logistics Confirms| D{Assign Driver}
+    D -->|Updates DB| E(Shipment Confirmed)
+    E -->|Driver Scans Pickup QR| F(Shipment In-Transit)
+    F -->|Driver Scans Delivery QR| G(Shipment Delivered)
+    G -->|Update Driver Stats| H[Driver Available]
+```
+
+### Real-time Tracking Flow
+
+```mermaid
+sequenceDiagram
+    participant Driver as Driver App
+    participant Server as Backend Server
+    participant DB as MongoDB
+    participant User as User App
+
+    Driver->>Server: Connect (Socket.io)
+    User->>Server: Connect (Socket.io)
+
+    loop Every few seconds
+        Driver->>Server: emit 'driver:location:set'
+        Server->>DB: Update Driver Location
+        Server->>User: broadcast 'driver:location:update'
+        User->>User: Update Map Marker
+    end
+```
 
 ## 📝 Usage Example
 
 1.  **Register/Login** to get a valid `token`.
-2.  Include the token in the `Authorization` header (`Bearer <token>`) for protected routes.
-3.  **Book a shipment** via `/api/v1/user/order/book`.
-4.  **Track status** via real-time sockets or status endpoints.
+2.  **Book Shipment**: User calls `/api/v1/user/order/book`. Emails are sent.
+3.  **Assign Driver**: Logistics provider calls `/api/v1/logistic/shipment/confirm`.
+4.  **Pickup**: Driver scans QR at pickup location using `/api/v1/logistic/shipment/scan`.
+5.  **Track**: User connects to Socket.io to see driver moving.
+6.  **Delivery**: Driver scans QR at delivery location.
