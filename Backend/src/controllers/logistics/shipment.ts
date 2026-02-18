@@ -8,7 +8,7 @@ export async function confirmShipment(req: Request, res: Response) {
         const authUser = req.user;
         const { driverId, shipmentId} = req.body;
         const logisticClientId = authUser?._id;
-
+        console.log(logisticClientId)
         if( !driverId || !shipmentId){
             console.log("Driver ID and status are required!");
             return res.status(400).json({ message: "Driver ID and status are required!" });

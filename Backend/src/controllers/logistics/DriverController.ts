@@ -32,7 +32,7 @@ export async function addDriver(req: Request, res: Response) {
             return res.status(400).json({ message: "All fields are required!" });
         }
 
-        const client = await LogisticDetails.findOne({userId:logisticClientId});
+        const client = await LogisticDetails.findOne({ userId: logisticClientId });
         if (!client) {
             console.log("Logistic client not found!");
             return res.status(404).json({ message: "Logistic client not found!" });
@@ -82,30 +82,29 @@ export async function addDriver(req: Request, res: Response) {
 
         await newDriver.save();
 
+        // Email logic commented out for development
+        // TODO: Re-enable email sending in production
+        /*
         const transporter = nodemailer.createTransport({
             service: "gmail",
-            auth: {
-                user: config.EMAIL_ID,
-                pass: config.GMAIL_API
-            }
-        })
-
-        const mailOptions = {
-        from: config.EMAIL_ID,
-        to: email,
-        subject: "FastFare Driver Account Created",
-        html: `
-            <p>Your driver account has been created.</p>
-            <p>Email: <strong>${email}</strong></p>
-            <p>Temporary Password: <strong>${tempPassword}</strong></p>
-        `
-        };
-
-        await transporter.sendMail(mailOptions);
-        console.log(`Email sent to ${email} successfully!`);
+            port: 587,
+            secure: false,
+            auth: { user: config.EMAIL_ID, pass: config.GMAIL_API }
+        });
+        await transporter.verify();
+        await transporter.sendMail({ ... });
+        */
 
         console.log("Driver added successfully!");
-        return res.status(201).json({ message: "Driver added successfully!", driver: newDriver });
+        return res.status(201).json({ 
+            message: "Driver added successfully!", 
+            credentials: {
+                email,
+                tempPassword
+            },
+            driver: newDriver 
+        });
+
     } catch (error) {
         console.log("Error: Internal Server Error!", error);
         return res.status(500).json({ message: "Internal Server Error!" });

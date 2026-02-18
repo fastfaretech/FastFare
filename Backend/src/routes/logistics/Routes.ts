@@ -12,6 +12,6 @@ router.patch('/update/:id', Authenticate, Authorize(["logistic"]), UpdateUser)
 router.post('/driver/add', Authenticate, Authorize(["logistic"]), addDriver)
 router.get('/driver/getall', Authenticate, Authorize(["logistic"]), getDrivers)
 router.post('/shipment/confirm', Authenticate, Authorize(["logistic"]), confirmShipment)
-router.post('/shipment/scan', Authenticate, Authorize(["driver"]), scanShipment)
+router.post('/shipment/scan', Authenticate, Authorize(["driver", "logistic"]), scanShipment)
 
 export default router
